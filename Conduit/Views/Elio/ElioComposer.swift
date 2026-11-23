@@ -1,14 +1,15 @@
 #if ELIO_PERSONAL
 import SwiftUI
 
-/// One field with its send arrow inside it, the way Messages draws one.
-/// The arrow fades in, so the field never changes width as typing starts.
+/// One field on Liquid Glass, with its send arrow inside it. The arrow fades
+/// in, so the field never changes width as typing starts.
 struct ElioComposer: View {
     @Binding var text: String
     var focused: FocusState<Bool>.Binding
-    var prompt: String = "Message"
+    var prompt: String = "Message Elio"
     var onSend: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sends = 0
 
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -21,34 +22,31 @@ struct ElioComposer: View {
         .textFieldStyle(.plain)
         .lineLimit(1...6)
         .focused(focused)
-        .padding(.leading, 14)
-        .padding(.trailing, 44)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color(uiColor: .separator).opacity(0.4))
-        )
+        .padding(.leading, 16)
+        .padding(.trailing, 46)
+        .padding(.vertical, 11)
+        .conduitGlassSurface(cornerRadius: 24, interactive: true)
         .overlay(alignment: .bottomTrailing) {
-            Button(action: onSend) {
+            Button {
+                sends += 1
+                onSend()
+            } label: {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(Circle().fill(Color(uiColor: .conduitUserBubble)))
+                    .background(Circle().fill(Color(uiColor: .systemBlue)))
             }
-            .buttonStyle(.plain)
-            .padding(.trailing, 5)
-            .padding(.bottom, 4)
+            .buttonStyle(ElioPressStyle())
+            .padding(.trailing, 6)
+            .padding(.bottom, 5)
             .opacity(canSend ? 1 : 0)
             .disabled(!canSend)
             .accessibilityHidden(!canSend)
             .accessibilityLabel(Text(verbatim: "Send"))
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: canSend)
+        .sensoryFeedback(.impact(weight: .light), trigger: sends)
     }
 }
 #endif

@@ -10,14 +10,25 @@ struct ElioChatScreen: View {
     let onOpenSettings: () -> Void
     /// Sample rows for the DEBUG look build. Nil on every real launch.
     var previewRows: [ElioRow]? = nil
+    /// DEBUG look build only: open the first reaction picker.
+    var previewPicksReaction = false
     @State private var following = true
+    @State private var threadWidth: CGFloat = 0
     @SceneStorage("elio.composer.draft") private var draft = ""
     @FocusState private var composerFocused: Bool
 
     private let bottomID = "elio-bottom"
 
+    /// A bubble may run to within 64 points of the far edge, as a message
+    /// does in Messages, and no further.
+    private var bubbleCap: CGFloat {
+        max(180, threadWidth - 64)
+    }
+
     private var rows: [ElioRow] {
-        previewRows ?? ElioRow.build(appState.messages, streaming: appState.streamingText)
+        previewRows ?? ElioRow.build(appState.messages,
+                                     streaming: appState.streamingText,
+                                     cap: bubbleCap)
     }
 
     private var showsTyping: Bool {
@@ -27,7 +38,7 @@ struct ElioChatScreen: View {
     /// The last message Hamish sent, once Elio has answered it or is working
     /// on it. "Seen" here means Hermes started its turn, not a delivery
     /// receipt this app invented.
-    private var seenRowID: String? {
+    private func seenRowID(in rows: [ElioRow]) -> String? {
         guard let index = rows.lastIndex(where: { $0.kind == .user }) else { return nil }
         if index < rows.count - 1 { return rows[index].id }
         guard previewRows == nil, appState.turnState.isRunning else { return nil }
@@ -35,13 +46,16 @@ struct ElioChatScreen: View {
     }
 
     var body: some View {
+        let rows = self.rows
+        let seen = seenRowID(in: rows)
+        let pickerRow = previewPicksReaction ? rows.last(where: { $0.kind == .agent })?.id : nil
         NavigationStack {
             ScrollViewReader { proxy in
                 tracked(
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(rows) { row in
-                                rowView(row)
+                                rowView(row, seen: seen, picker: pickerRow)
                             }
                             if showsTyping {
                                 ElioTypingBubble()
@@ -51,12 +65,19 @@ struct ElioChatScreen: View {
                                 .frame(height: 1)
                                 .id(bottomID)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 10)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(key: ElioWidthKey.self,
+                                                       value: proxy.size.width)
+                            }
+                        )
                         .animation(.easeOut(duration: 0.2), value: showsTyping)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .defaultScrollAnchor(.bottom)
+                    .onPreferenceChange(ElioWidthKey.self) { threadWidth = $0 }
                 )
                 .safeAreaInset(edge: .bottom, spacing: 0) { composerBar }
                 .onAppear { scrollToBottom(proxy, animated: false) }
@@ -89,18 +110,22 @@ struct ElioChatScreen: View {
     }
 
     @ViewBuilder
-    private func rowView(_ row: ElioRow) -> some View {
+    private func rowView(_ row: ElioRow, seen: String?, picker: String?) -> some View {
         Group {
             switch row.kind {
             case .user, .agent:
-                ElioBubble(row: row)
-                if row.id == seenRowID {
+                ElioBubble(row: row,
+                           canReact: { canReactNow(row) },
+                           startsWithPicker: row.id == picker) { emoji in
+                    Task { await appState.react(to: row.id, with: emoji) }
+                }
+                if row.id == seen {
                     Text(verbatim: "Seen")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.top, 2)
-                        .padding(.trailing, 2)
+                        .padding(.trailing, 4)
                 }
             case .clarify:
                 ElioClarifyCard(row: row) { questionId, answer in
@@ -125,6 +150,8 @@ struct ElioChatScreen: View {
         .id(row.id)
     }
 
+    /// The field floats: no bar behind it, just the page colour fading up so
+    /// the thread slides away under the glass.
     private var composerBar: some View {
         VStack(spacing: 6) {
             if let status {
@@ -140,9 +167,28 @@ struct ElioChatScreen: View {
                          onSend: send)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(.bar)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background {
+            LinearGradient(
+                stops: [
+                    .init(color: Color(uiColor: .systemBackground).opacity(0), location: 0),
+                    .init(color: Color(uiColor: .systemBackground), location: 0.4)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .bottom)
+        }
+    }
+
+    /// Asked when a finger lands on a bubble, so drawing never scans the
+    /// transcript for what can be reacted to.
+    private func canReactNow(_ row: ElioRow) -> Bool {
+        guard previewRows == nil,
+              let message = appState.messages.first(where: { $0.id == row.id })
+        else { return false }
+        return appState.canReact(to: message)
     }
 
     private var status: String? {

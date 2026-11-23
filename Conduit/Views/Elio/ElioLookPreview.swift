@@ -8,7 +8,9 @@ struct ElioLookPreview: View {
     static let launchArgument = "-ElioLook"
 
     var body: some View {
-        ElioChatScreen(onOpenSettings: {}, previewRows: Self.sample)
+        ElioChatScreen(onOpenSettings: {}, previewRows: Self.sample,
+                       previewPicksReaction: ProcessInfo.processInfo.arguments
+                        .contains("-ElioLookPicker"))
     }
 
     private static func row(_ id: String, _ kind: ElioRow.Kind, _ text: String,
@@ -27,6 +29,8 @@ struct ElioLookPreview: View {
             row("s7", .agent, "Done. The domain now bills to the new card, and the next charge is the twelfth of December."),
             row("s8", .agent, "One more:\n\n```swift\nlet renewal = 69.00\n```\n\nThat is the whole cost.")
         ]
+
+        rows[6].reactions = [MessageReaction(emoji: "\u{2764}\u{FE0F}", author: "user", at: nil)]
 
         var clarify = ElioRow(id: "s9", kind: .clarify, text: "Which list do you want?")
         clarify.clarify = ClarifyActivity(
