@@ -238,3 +238,32 @@ Mac follow-up: generate the personal overlay, build the Conduit scheme in
 Elio.xcodeproj, then run the `BotModeTests` XCTest class and the manual checklist
 in ACCEPTANCE.md. The new shell is functional source, but these local Python
 checks cannot establish that it compiles or behaves correctly on iOS.
+
+## Mac results that supersede the note above — 2026-11-23
+
+The overlay compiles: unsigned device and simulator builds both report
+`BUILD SUCCEEDED` on Xcode 27.0. The two defects found there are fixed in
+`personal/project.yml` (TEST_HOST after the product rename, and the schemes
+block that replaced the implicit per-target schemes).
+
+`xcodebuild test -scheme ElioTests` on an iPhone 17 Pro simulator executed 362
+tests. `ComposerDraftStoreTests` 55/55 passed. `BotModeTests`: 307 executed,
+**70 failures**, unchanged before and after `987d64d`.
+
+What the 70 actually are: each one asserts upstream routing for a notification
+that names a profile other than the pinned one (for example
+`ConduitNotificationTarget(profile: "analyst")` against `activeProfile
+"default"`), and the personal gate refuses that target by design because this
+build has no workspace UI to open it in. The tests are compiled with
+`ELIO_PERSONAL`, so they assert a routing the personal build deliberately does
+not do.
+
+`987d64d` was written to make an *unproven* target retryable instead of
+dead-ending; re-running the suite showed the identical 70 failures, so that
+commit changed no test outcome. It is kept because the semantics are still
+right (a target that names this pin but whose ids are not proven yet now
+returns `unverified`), but it is **not** evidence of a fix and no test covers it.
+
+Therefore: not one of the 70 is reconciled yet. The next step is personal
+expectations for the routing assertions (a personal variant per test, or the
+flag off for the upstream half of the class), not further behaviour changes.
