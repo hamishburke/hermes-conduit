@@ -26,15 +26,30 @@ enum ElioConversationSelection {
     // Personal shell copy is deliberately verbatim English in PASS1.
     static let externalOpenUnavailable = "Elio only opens its pinned conversation. Open Elio and retry that conversation."
 
+    /// The target names our pinned scope, even when its identity is not proven
+    /// yet: same dashboard, same pinned profile, no room.
+    static func matchesPinnedScope(_ target: ConduitNotificationTarget,
+                                   scope: ElioConversationScope?, pinnedProfile: String?) -> Bool {
+        guard let scope, let pinnedProfile, !pinnedProfile.isEmpty,
+              target.dashboardID == scope.dashboardID, !target.hasMalformedDashboardID,
+              target.profile == pinnedProfile, target.roomID == nil else { return false }
+        return true
+    }
+
+    /// Ids a canonical lookup can still prove. An empty or malformed id is
+    /// "unproven", never proof of a different thread, so the caller answers it
+    /// with a retryable outcome rather than a terminal failure.
+    static func hasUsableTargetIDs(_ target: ConduitNotificationTarget) -> Bool {
+        let ids = [target.sessionId] + [target.durableSessionID].compactMap { $0 }
+        return ids.allSatisfy { !$0.isEmpty && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
     /// Preflight before waiting on a connection or touching navigation. A
     /// notification cannot choose the initial pin or another dashboard.
     static func canResolveExternalOpen(_ target: ConduitNotificationTarget,
                                        scope: ElioConversationScope?, pinnedProfile: String?) -> Bool {
-        guard let scope, let pinnedProfile, !pinnedProfile.isEmpty,
-              target.dashboardID == scope.dashboardID, !target.hasMalformedDashboardID,
-              target.profile == pinnedProfile, target.roomID == nil else { return false }
-        let ids = [target.sessionId] + [target.durableSessionID].compactMap { $0 }
-        return ids.allSatisfy { !$0.isEmpty && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        matchesPinnedScope(target, scope: scope, pinnedProfile: pinnedProfile)
+            && hasUsableTargetIDs(target)
     }
 
     /// Only the authoritative canonical resolver's selected lineage is proof.

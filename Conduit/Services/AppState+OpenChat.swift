@@ -1428,20 +1428,30 @@ extension AppState {
     func openNotificationTargetOutcome(_ target: ConduitNotificationTarget) async -> NotificationOpenOutcome {
         #if ELIO_PERSONAL
         // Before any dashboard switch, decision migration or draft exposure.
-        // Cold launch and compression may need fresh canonical evidence.
+        // A target for another dashboard or profile cannot be served by this
+        // app at all, so it is terminal. A target that names this pin but whose
+        // ids are not proven yet is not evidence of another thread: it stays
+        // retryable, the way the ordinary opener treats an unproven lookup.
         guard let scope = elioConversationScope,
-              ElioConversationSelection.canResolveExternalOpen(
-                target, scope: scope, pinnedProfile: defaults.string(forKey: scope.pinStorageKey)) else {
+              let pinnedProfile = defaults.string(forKey: scope.pinStorageKey),
+              ElioConversationSelection.matchesPinnedScope(
+                target, scope: scope, pinnedProfile: pinnedProfile) else {
             errorMessage = ElioConversationSelection.externalOpenUnavailable
             return .failed
+        }
+        guard ElioConversationSelection.hasUsableTargetIDs(target) else {
+            return .unverified(AppLocalization.string(
+                "Could not verify that workspace for this notification. Reconnect and try again."
+            ))
         }
         guard await elioPrepareExternalOpen(target),
               elioOpenedConversation?.permitsExternalOpen(target, scope: elioConversationScope) == true else {
             // Keep a correctly scoped cold tap pending while disconnected.
             // Its session still needs authoritative proof before any route.
             if !Task.isCancelled, elioConversationScope == scope, !isConnected { return .retry }
-            errorMessage = ElioConversationSelection.externalOpenUnavailable
-            return .failed
+            return .unverified(AppLocalization.string(
+                "Could not verify that workspace for this notification. Reconnect and try again."
+            ))
         }
         #endif
         let outcome = await openNotificationTargetOutcomeRouted(target)
