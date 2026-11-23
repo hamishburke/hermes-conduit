@@ -15,6 +15,7 @@ struct ElioChatScreen: View {
     var previewPicksReaction = false
     @State private var following = true
     @State private var threadWidth: CGFloat = 0
+    @State private var showsChats = ProcessInfo.processInfo.arguments.contains("-ElioLookChats")
     @SceneStorage("elio.composer.draft") private var draft = ""
     @FocusState private var composerFocused: Bool
 
@@ -99,7 +100,9 @@ struct ElioChatScreen: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Button(action: onOpenSettings) {
+                    Button {
+                        showsChats = true
+                    } label: {
                         Image(avatarAsset)
                             .resizable()
                             .scaledToFill()
@@ -109,7 +112,7 @@ struct ElioChatScreen: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(verbatim: "Elio"))
-                    .accessibilityHint(Text(verbatim: "Opens settings"))
+                    .accessibilityHint(Text(verbatim: "Opens your chats and settings"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -122,6 +125,9 @@ struct ElioChatScreen: View {
                     .disabled(previewRows == nil && !appState.canTapNewChat)
                     .accessibilityLabel(Text(verbatim: "New chat"))
                 }
+            }
+            .sheet(isPresented: $showsChats) {
+                ElioChatsSheet(onOpenSettings: onOpenSettings)
             }
         }
     }
