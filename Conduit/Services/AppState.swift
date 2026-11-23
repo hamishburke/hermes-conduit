@@ -3328,6 +3328,8 @@ final class AppState: ObservableObject {
     let defaults: UserDefaults
     #if ELIO_PERSONAL
     @Published var elioOpenedConversation: ElioOpenedConversation?
+    /// The chat he picked from the chats sheet, accepted while it is on screen.
+    @Published var elioEnteredChat: ElioEnteredChat?
     #endif
     /// Each profile's Voice preferences as last decoded, beside the stored
     /// bytes they came from (`loadVoiceProfilePreferences`).

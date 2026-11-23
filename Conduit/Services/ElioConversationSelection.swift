@@ -85,6 +85,15 @@ enum ElioConversationSelection {
     }
 }
 
+/// A chat he walked into himself, from the chats sheet. The bot proof names
+/// the pinned conversation and cannot vouch for another one, so this is
+/// accepted on its own while one of its ids is the session on screen.
+struct ElioEnteredChat: Equatable {
+    var sessionIDs: Set<String>
+    let dashboardID: UUID
+    let profile: String
+}
+
 /// Evidence captured only after openBotChatOutcome reports .opened.
 /// Kept in memory so an unverified cold-launch saved copy is never sendable.
 struct ElioOpenedConversation: Equatable {
@@ -211,6 +220,14 @@ extension AppState {
         if let created = shownChat.newChatOpenedSessionID, activeSessionId == created,
            farChat == nil, activeRoomSurface == nil, !showsPendingNewChat,
            elioConversationScope != nil {
+            return true
+        }
+        // A chat he opened from the sheet is his to see, whatever the pinned
+        // bot proof says about it.
+        if let entered = elioEnteredChat, let scope = elioConversationScope,
+           entered.dashboardID == scope.dashboardID, entered.profile == activeProfile,
+           let sessionID = activeSessionId, entered.sessionIDs.contains(sessionID),
+           farChat == nil, activeRoomSurface == nil, !showsPendingNewChat {
             return true
         }
         guard let opened = elioOpenedConversation, farChat == nil,

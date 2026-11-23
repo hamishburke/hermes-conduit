@@ -14,6 +14,7 @@ struct ElioChatsSheet: View {
     @State private var showsUpdate = false
     @State private var copied = false
     @State private var opening: String?
+    @State private var openFailure: String?
 
     private var openSessionID: String? { appState.activeSessionId }
 
@@ -36,6 +37,14 @@ struct ElioChatsSheet: View {
                     }
                 } header: {
                     Text(verbatim: "Your chats with Elio")
+                }
+
+                if let openFailure {
+                    Section {
+                        Text(verbatim: openFailure)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 if let newest = releases.newerThanRunning {
@@ -172,16 +181,40 @@ struct ElioChatsSheet: View {
     private func open(_ session: SessionSummary) {
         guard opening == nil else { return }
         opening = session.id
+        openFailure = nil
+        // Claim the chat before the open lands, so the screen never falls to
+        // "unavailable" in the frame between the switch and the proof.
+        if let scope = appState.elioConversationScope {
+            appState.elioEnteredChat = ElioEnteredChat(sessionIDs: [session.id],
+                                                       dashboardID: scope.dashboardID,
+                                                       profile: appState.activeProfile)
+        }
         Task {
             let opened = await appState.openSession(session.id)
-            if opened, var proof = appState.elioOpenedConversation {
+            if !opened {
+                appState.elioEnteredChat = nil
+                opening = nil
+                openFailure = "Couldn't open that chat. Try again."
+                return
+            }
+            // The open can resolve a runtime id that differs from the listed
+            // one; the chat is whichever ids are live now.
+            if let scope = appState.elioConversationScope {
+                var ids = Set(appState.liveChatSessionIDs())
+                ids.insert(session.id)
+                if let active = appState.activeSessionId { ids.insert(active) }
+                appState.elioEnteredChat = ElioEnteredChat(sessionIDs: ids,
+                                                           dashboardID: scope.dashboardID,
+                                                           profile: appState.activeProfile)
+            }
+            if var proof = appState.elioOpenedConversation {
                 // The shell's proof of "this is Elio's thread" gains the chat
                 // he just walked into, so it is shown rather than refused.
                 proof.sessionIDs.insert(session.id)
                 appState.elioOpenedConversation = proof
             }
             opening = nil
-            if opened { dismiss() }
+            dismiss()
         }
     }
 }
