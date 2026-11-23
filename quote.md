@@ -119,3 +119,15 @@ origin: typed, iPhone
 origin: typed, iPhone
 
 > i want the laptop to just always work for u in terms of updating the app for me. cus i like wanna be in bed away from laptop on charge. give cmd
+
+### 2026-11-24 · bigger hit box, today's sessions, a living icon
+origin: typed, iPhone
+
+> - make the hit box bigger for the text input, sometimes i miss it.
+> - make the sessions just *todays* (maybe  also showing recent sessions if like just after midnigh)
+> - make the icon your fursona. make it a bit bigger/more lively. like using diff states for working, idle, needs you etc
+
+### 2026-11-24 · badges for other sessions
+origin: typed, iPhone
+
+> also add a needs you, and finished badge if another session neeeds you.

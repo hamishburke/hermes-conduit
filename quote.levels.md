@@ -215,3 +215,53 @@ i want the laptop to just always work for u in terms of updating the app for me.
 I want the laptop to just always work for u in terms of updating the app for me. Cus i like wanna be in bed away from laptop on charge. Give cmd
 
 ---
+
+## 2026-11-24 · bigger hit box, today's sessions, a living icon
+origin: typed, iPhone
+
+**L0 raw** · 52 words
+
+- make the hit box bigger for the text input, sometimes i miss it.
+- make the sessions just *todays* (maybe  also showing recent sessions if like just after midnigh)
+- make the icon your fursona. make it a bit bigger/more lively. like using diff states for working, idle, needs you etc
+
+**L1 names fixed** · 0 fixes, 52 words
+
+- make the hit box bigger for the text input, sometimes i miss it.
+- make the sessions just *todays* (maybe also showing recent sessions if like just after midnigh)
+- make the icon your fursona. make it a bit bigger/more lively. like using diff states for working, idle, needs you etc
+
+**L2 repeats removed** · 0 collapses, 52 words
+
+- make the hit box bigger for the text input, sometimes i miss it.
+- make the sessions just *todays* (maybe also showing recent sessions if like just after midnigh)
+- make the icon your fursona. make it a bit bigger/more lively. like using diff states for working, idle, needs you etc
+
+**L3 filler removed** · 0 fillers cut, 52 words
+
+- make the hit box bigger for the text input, sometimes i miss it.
+- make the sessions just *todays* (maybe also showing recent sessions if like just after midnigh)
+- make the icon your fursona. Make it a bit bigger/more lively. Like using diff states for working, idle, needs you etc
+
+---
+
+## 2026-11-24 · badges for other sessions
+origin: typed, iPhone
+
+**L0 raw** · 13 words
+
+also add a needs you, and finished badge if another session neeeds you.
+
+**L1 names fixed** · 0 fixes, 13 words
+
+also add a needs you, and finished badge if another session neeeds you.
+
+**L2 repeats removed** · 0 collapses, 13 words
+
+also add a needs you, and finished badge if another session neeeds you.
+
+**L3 filler removed** · 0 fillers cut, 13 words
+
+Also add a needs you, and finished badge if another session neeeds you.
+
+---
