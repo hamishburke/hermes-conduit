@@ -3016,7 +3016,8 @@ extension AppState {
         let rekeyed = isSameChat
             ? Self.keepingRowIDs(from: previousMessages, in: restored, durableIDs: shownChat.durablePersistedRowIDs)
             : restored
-        let rebuilt = isSameChat ? Self.keepingLocalNotes(from: previousMessages, in: rekeyed) : rekeyed
+        let withSends = isSameChat ? Self.keepingUnackedLocalSends(from: previousMessages, in: rekeyed) : rekeyed
+        let rebuilt = isSameChat ? Self.keepingLocalNotes(from: previousMessages, in: withSends) : withSends
         messages = mergeVoiceCallMarkers(into: mergeCachedReviews(into: rebuilt, sessionId: result.sessionId), sessionId: result.sessionId)
         // A cached push copy of a clarify the transcript already holds from
         // Hermes goes, so one question never shows as two cards.
@@ -4187,6 +4188,41 @@ extension AppState {
             cursor = links[cursor]
         }
         return run.reversed()
+    }
+
+    /// Keep recent optimistic sends through a same-chat refresh while Hermes
+    /// has not returned them. One rebuilt user row can account for only one
+    /// local row; equal text and close timestamps are evidence, not proof, of
+    /// identity when identical sends happen together on different devices.
+    static func keepingUnackedLocalSends(from previous: [ChatMessage], in rebuilt: [ChatMessage]) -> [ChatMessage] {
+        var result = rebuilt
+        var available = Set(rebuilt.indices.filter { rebuilt[$0].role == .user })
+        let existingIDs = Set(rebuilt.map(\.id))
+        let now = Date()
+        for message in previous where message.role == .user && message.id.hasPrefix("local-") {
+            guard !existingIDs.contains(message.id),
+                  let time = MessageTimestampFormatter.date(from: message.timestamp) else { continue }
+            // A ten-minute ceiling spans ordinary reconnects but lets an
+            // unconfirmed row expire on a later refresh rather than live forever.
+            let age = now.timeIntervalSince(time)
+            guard age >= -2, age <= 600 else { continue }
+            let match = available.sorted().first { index in
+                let candidate = rebuilt[index]
+                guard candidate.content == message.content,
+                      let other = MessageTimestampFormatter.date(from: candidate.timestamp) else { return false }
+                return abs(other.timeIntervalSince(time)) <= 2
+            }
+            if let match {
+                available.remove(match)
+                continue
+            }
+            let insertion = result.firstIndex { row in
+                guard let other = MessageTimestampFormatter.date(from: row.timestamp) else { return false }
+                return other > time
+            } ?? result.endIndex
+            result.insert(message, at: insertion)
+        }
+        return result
     }
 
     /// The chat's own notes (slash command output, /btw and /background
