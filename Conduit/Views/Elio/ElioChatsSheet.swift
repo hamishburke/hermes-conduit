@@ -140,7 +140,8 @@ struct ElioChatsSheet: View {
                         UIPasteboard.general.string = installCommand
                         copied = true
                     } label: {
-                        Label(copied ? "Copied" : "Copy install command",
+                        Label(copied ? AppLocalization.string("Copied")
+                                     : AppLocalization.string("Copy"),
                               systemImage: copied ? "checkmark" : "doc.on.doc")
                     }
                     .buttonStyle(.borderedProminent)

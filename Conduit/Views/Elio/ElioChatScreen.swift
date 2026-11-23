@@ -126,6 +126,7 @@ struct ElioChatScreen: View {
             }
             .sheet(isPresented: $showsChats) {
                 ElioChatsSheet(onOpenSettings: onOpenSettings)
+                    .environmentObject(appState)
             }
         }
     }
