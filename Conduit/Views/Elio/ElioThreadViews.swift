@@ -12,16 +12,22 @@ enum ElioTextMeasure {
     /// Measured widths, keyed by cap, type size and source. A streaming reply
     /// re-asks once per token; a settled message hits this every redraw.
     private static var cache: [String: CGFloat] = [:]
+    private static var insertionOrder: [String] = []
+    private static let cacheLimit = 800
 
-    static func width(of source: String, cap: CGFloat) -> CGFloat {
+    static func width(of source: String, cap: CGFloat, cacheable: Bool = true) -> CGFloat {
         guard cap > 60 else { return cap }
         let size = ChatTypography.stored()
         let font = ChatTypography.font(for: .body, chatSize: size)
         let key = "\(Int(cap))|\(Int(font.pointSize))|\(source)"
-        if let hit = cache[key] { return hit }
+        if cacheable, let hit = cache[key] { return hit }
         let value = measure(source, cap: cap, font: font)
-        if cache.count > 800 { cache.removeAll(keepingCapacity: true) }
+        guard cacheable else { return value }
+        if insertionOrder.count >= cacheLimit {
+            cache.removeValue(forKey: insertionOrder.removeFirst())
+        }
         cache[key] = value
+        insertionOrder.append(key)
         return value
     }
 
@@ -44,9 +50,10 @@ enum ElioTextMeasure {
     }
 
     private static func hasBlock(_ source: String) -> Bool {
-        source.contains("```") || source.contains("\n#") || source.contains("\n- ")
-            || source.contains("\n* ") || source.contains("\n|") || source.contains("\n> ")
-            || source.contains("\n1.")
+        let lines = "\n" + source
+        return source.contains("```") || lines.contains("\n#") || lines.contains("\n- ")
+            || lines.contains("\n* ") || lines.contains("\n|") || lines.contains("\n> ")
+            || lines.contains("\n1.")
     }
 }
 
