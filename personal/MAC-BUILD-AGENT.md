@@ -59,7 +59,14 @@ wire; the phone shows up in `devicectl list devices` as
 
 - The agent fires from a `.build-request` touch and its output lands in
   `.build-status`.
-- The simulator path builds and installs from fedora with no hands.
-- The phone path: the first agent build failed at a zsh special variable
-  (`status`), which is fixed; the signed build itself is the thing to watch on
-  the next run.
+- The signed build runs inside the GUI session with no `errSecInternalComponent`
+  and installs over the local network: `.build-status` ends
+  `OK installed 2026.11.24.1 (1) on A6DD9AAA-…`, and `devicectl device info
+  apps` on the phone independently reports `Elio com.hamishburke.elio
+  2026.11.24.1 1`.
+- `scripts/elio-install.sh --device` does the whole thing from fedora in one
+  command: rsync, simulator build, request, signed build, install, verified
+  outcome.
+- The Mac is already `sleep 0` on AC with `womp 1`, so it does not doze on
+  power. A closed lid still sleeps it; the agent wraps its build in
+  `caffeinate -s`, which covers idle sleep but not clamshell.

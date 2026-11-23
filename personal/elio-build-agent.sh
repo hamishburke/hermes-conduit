@@ -24,7 +24,7 @@ if ! /tmp/xcodegen/bin/xcodegen generate --spec personal/project.yml \
     exit 1
 fi
 
-if ! xcodebuild build -project Elio.xcodeproj -scheme Elio -configuration Debug \
+if ! caffeinate -s xcodebuild build -project Elio.xcodeproj -scheme Elio -configuration Debug \
         -destination 'generic/platform=iOS' -derivedDataPath build/dd-dev \
         DEVELOPMENT_TEAM="$team" MARKETING_VERSION="$version" \
         CURRENT_PROJECT_VERSION="$number" >>"$log" 2>&1; then
