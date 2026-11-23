@@ -60,3 +60,33 @@ replaced by foreground WebSocket receipt or a fake Seen indicator.
 
 Hosted compilation is also blocked by the account annotation recorded in
 [BUILD-STATUS.md](BUILD-STATUS.md). No billing settings have been changed.
+
+## What this Mac actually needed (2026-11-23)
+
+Corrections to the steps above, from a real run on macOS 27.3 / Xcode 27.0
+(27A266a), arm64. Nothing here has been installed on the iPhone yet.
+
+- **No Homebrew on this Mac.** XcodeGen installs without it: take
+  `xcodegen.zip` from the 2.48.0 release and run `xcodegen/bin/xcodegen` in
+  place; it finds its `share/xcodegen` presets next to the binary.
+- **Metal Toolchain ships separately with Xcode 26 and later.** Without it the
+  first build stops at `error: cannot execute tool 'metal' due to missing Metal
+  Toolchain`. Fix once per Xcode: `xcodebuild -downloadComponent MetalToolchain`.
+- **Schemes are now explicit.** `personal/project.yml` declares `Elio` (the app)
+  and `ElioTests` (the app plus `ConduitTests`). Use `-scheme Elio`, not
+  `Conduit`. Declaring any `schemes:` block removes XcodeGen's implicit
+  per-target schemes, which is also why `Conduit` no longer exists.
+- **Signing.** The Mac holds a valid *Apple Development* certificate for team
+  `8Y49AVBT79` but no Xcode account for it, so automatic signing for that team
+  fails with `No Account for Team`. The account signed in to Xcode is a free
+  Personal Team; a free team will not register a device from the command line
+  (`Your team has no devices from which to generate a provisioning profile`),
+  so the device has to be registered by a Run from Xcode's UI once. After that
+  a profile appears in `~/Library/Developer/Xcode/UserData/Provisioning Profiles`.
+- **`codesign` from an SSH session fails** with `errSecInternalComponent` on the
+  embedded WebRTC framework: the private key is not usable outside the GUI
+  security session. Command-line builds that need signing must therefore be run
+  from a GUI session; unsigned `CODE_SIGNING_ALLOWED=NO` builds and simulator
+  runs are unaffected.
+- `xcodebuild -downloadPlatform iOS` installs the iOS 27.0 (24A434) simulator
+  runtime, 8.05 GB; compiling needs only the SDK, running needs the runtime.
