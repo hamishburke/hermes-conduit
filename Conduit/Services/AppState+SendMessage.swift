@@ -254,6 +254,7 @@ extension AppState {
                 }
                 guard isCurrentComposerSubmission(submissionContext) else { return false }
                 if sendsIntoEmptyNewChat, HermesClient.isSessionNotFoundError(error) {
+                    messages.removeAll { $0.id == userMessage.id }
                     return await resendInPlaceOfLostEmptyChat(
                         text, attachments: attachments, context: submissionContext, queued: queued,
                         lostSessionIDs: submissionSessionIDs, using: client
@@ -269,6 +270,7 @@ extension AppState {
                 // reconnect starts now all the same.
                 noteDropFoundBySend(error, client: client)
                 showSendFailure(AppLocalization.string("Attachment failed: \(UserFacingError.message(for: error))"))
+                messages.removeAll { $0.id == userMessage.id }
                 await recoverComposerSubmission(using: submissionContext)
                 return false
             }
@@ -467,6 +469,7 @@ extension AppState {
             if error is HermesClient.QueueUnsupportedError, !attachments.isEmpty {
                 guard isCurrentComposerSubmission(submissionContext) else { return false }
                 showSendFailure(HermesClient.QueueUnsupportedError.attachmentsMessage)
+                messages.removeAll { $0.id == userMessage.id }
                 await recoverComposerSubmission(using: submissionContext)
                 return false
             }
@@ -476,6 +479,7 @@ extension AppState {
                 return false
             }
             if sendsIntoEmptyNewChat, HermesClient.isSessionNotFoundError(error) {
+                messages.removeAll { $0.id == userMessage.id }
                 return await resendInPlaceOfLostEmptyChat(
                     text, attachments: attachments, context: submissionContext, queued: queued,
                     lostSessionIDs: submissionSessionIDs, using: client
@@ -672,6 +676,7 @@ extension AppState {
                 if isCurrentComposerSubmission(submissionContext) {
                     showSendFailure(AppLocalization.string("Failed to send: \(UserFacingError.message(for: error))"))
                 }
+                if isCurrentComposerSubmission(submissionContext) { messages.removeAll { $0.id == userMessage.id } }
                 if !reconnected, isCurrentComposerSubmission(submissionContext) {
                     await recoverComposerSubmission(using: submissionContext)
                 }
@@ -691,6 +696,7 @@ extension AppState {
                     showSendFailure(AppLocalization.string("Failed to send: \(UserFacingError.message(for: error))"))
                 }
             }
+            if isCurrentComposerSubmission(submissionContext) { messages.removeAll { $0.id == userMessage.id } }
             await recoverComposerSubmission(using: submissionContext)
             // Automatic takeover starts once the chat has synced. The
             // composer's words for this send come back while it runs, and
