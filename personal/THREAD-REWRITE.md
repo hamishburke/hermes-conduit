@@ -110,3 +110,31 @@ send path on a paired phone.
 Unverified after this pass: dictation on a device (no microphone input here),
 the New Chat path and the cached path (both need a paired, signed-in install),
 and the floating composer with the keyboard up.
+
+## Walking out of the one thread
+
+- The persona button in the bar opens a sheet of every chat on the gateway,
+  with the open one ticked, New Chat, and Settings at the bottom. Settings had
+  no visible home before; a hidden tap on the title was the only way in.
+- Opening a chat from the sheet extends the shell's proof to that session
+  (`elioOpenedConversation.sessionIDs`), so the screen that follows is the
+  thread rather than "Conversation unavailable". The same fix pattern as New
+  Chat: the proof names the pinned bot's canonical chat, and the gate has to be
+  told about the session he actually walked into.
+- Rooms Elio created (workstreams, delegate agents, tasks) are not in this
+  sheet yet. They are a different object from a session and need their own
+  status read; the section is left out rather than faked.
+
+## Updates
+
+- `scripts/elio-release.sh` (fedora) tags `elio-YYYY.MM.DD.N`, pushes the tag
+  and publishes it on GitHub with the commits since the last one.
+- `scripts/elio-install.sh` (fedora) rsyncs the tree to the Mac, regenerates
+  the project, builds for the simulator, and with `--device` builds for the
+  phone and installs over the wire. The signed device build still needs the
+  one-time GUI Run to register the device; the script says so instead of
+  claiming an install it could not make.
+- The app reports the newest release in the chats sheet, with its notes and a
+  copyable install command. It never claims to have installed anything.
+
+First release: `elio-2026.11.24.1`.
