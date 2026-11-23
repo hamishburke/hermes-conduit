@@ -13,12 +13,13 @@ uncommitted thread rewrite.
   `26-picker.png` shows the tapback picker opened by `-ElioLookPicker`,
   `18-ax.png` the same screen at accessibility-extra-large, and `20-login.png`
   the unpaired first-run screen with no `-ElioLook`.
-- Seen in the screenshots: white/black opaque bar with a centred "Elio" and one
-  trailing compose button; grey incoming bubbles, blue outgoing bubbles with
-  white text, uniform rounding and tighter runs from one speaker; a "Seen"
-  receipt under the last sent message; a Markdown code block inside a bubble;
-  a clarify question with one bubble per choice; one growing composer reading
-  "Message Elio".
+- Seen in the screenshots: the thread running under the status bar into a blur
+  and gradient fade, the persona's icon centred in the bar and a white compose
+  button; grey incoming bubbles, blue outgoing bubbles with white text, uniform
+  rounding and tighter runs from one speaker; a "Seen" receipt under the last
+  sent message; a Markdown code block inside a bubble; a clarify question with
+  one bubble per choice; a floating glass composer with the mic in the send
+  slot.
 - Not done: install on the physical iPhone, pairing, a real send, streaming,
   VoiceOver, Reduce Motion, iPad, and the top-of-thread grouping. The simulator
   has no pairing, so `-ElioLook` feeds fixed rows; it proves layout, not the
