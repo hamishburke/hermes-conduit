@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Installed at ~/Library/LaunchAgents/com.hamishburke.elio-build.plist
+
+  It exists because codesign cannot reach the signing key from an SSH session
+  (errSecInternalComponent on the first framework it signs). launchd starts this
+  job inside the Mac's logged-in GUI session, where the key is usable, so the
+  signed build and the device install can both be asked for from fedora.
+
+  WatchPaths on .build-request: `scripts/elio-install.sh --device` rewrites the
+  version files and touches the request, then waits for .build-status.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hamishburke.elio-build</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/hamishburke/Developer/elio-iphone-build/personal/elio-build-agent.sh</string>
+  </array>
+  <key>WatchPaths</key>
+  <array>
+    <string>/Users/hamishburke/Developer/elio-iphone-build/.build-request</string>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/tmp/elio-build-agent.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/elio-build-agent.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

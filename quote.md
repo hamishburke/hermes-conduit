@@ -109,3 +109,13 @@ a tool result, and not a system or command wrapper. Take those strings exactly
 as stored, group them by session date, and write them out for review as
 candidates. What comes back is a pile of quotes to choose from, never a
 summary: the choosing is his.
+
+### 2026-11-24 · quotes at several levels
+origin: typed, iPhone
+
+> maybe quotes can still be tidied up? or like it keeps raw, but then has varying resolutions of diffs to it, so you get a clearer and clearer message of what i was actually saying at each part. like it'd start just correcting misspelling, then removing when i repeat words, then ums etc.
+
+### 2026-11-24 · the laptop should update it while he is in bed
+origin: typed, iPhone
+
+> i want the laptop to just always work for u in terms of updating the app for me. cus i like wanna be in bed away from laptop on charge. give cmd

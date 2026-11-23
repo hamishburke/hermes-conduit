@@ -173,3 +173,45 @@ take what i learnt from the city (my github project), about the city mayor conce
 Take what i learnt from the city (my github project), about the city mayor concept. And start a 'quote. Md'. You decide conventions for it, its kinda for you to automatically record my journey and input into the project. I'm actually *only* wanting my own words, and no like elaboration by you. It'll be good for then at a later date, you can more easily tell the story of what you made. (and make writing alphero intelligence articles easier lol). Also if this worked well i'd want to be able to use to retrospectively on a project in claude code at work. Like looks at all sessions, and pull your exact decisions/quotes.
 
 ---
+
+## 2026-11-24 · quotes at several levels
+origin: typed, iPhone
+
+**L0 raw** · 53 words
+
+maybe quotes can still be tidied up? or like it keeps raw, but then has varying resolutions of diffs to it, so you get a clearer and clearer message of what i was actually saying at each part. like it'd start just correcting misspelling, then removing when i repeat words, then ums etc.
+
+**L1 names fixed** · 0 fixes, 53 words
+
+maybe quotes can still be tidied up? or like it keeps raw, but then has varying resolutions of diffs to it, so you get a clearer and clearer message of what i was actually saying at each part. like it'd start just correcting misspelling, then removing when i repeat words, then ums etc.
+
+**L2 repeats removed** · 0 collapses, 53 words
+
+maybe quotes can still be tidied up? or like it keeps raw, but then has varying resolutions of diffs to it, so you get a clearer and clearer message of what i was actually saying at each part. like it'd start just correcting misspelling, then removing when i repeat words, then ums etc.
+
+**L3 filler removed** · 0 fillers cut, 53 words
+
+Maybe quotes can still be tidied up? Or like it keeps raw, but then has varying resolutions of diffs to it, so you get a clearer and clearer message of what i was actually saying at each part. Like it'd start just correcting misspelling, then removing when i repeat words, then ums etc.
+
+---
+
+## 2026-11-24 · the laptop should update it while he is in bed
+origin: typed, iPhone
+
+**L0 raw** · 32 words
+
+i want the laptop to just always work for u in terms of updating the app for me. cus i like wanna be in bed away from laptop on charge. give cmd
+
+**L1 names fixed** · 0 fixes, 32 words
+
+i want the laptop to just always work for u in terms of updating the app for me. cus i like wanna be in bed away from laptop on charge. give cmd
+
+**L2 repeats removed** · 0 collapses, 32 words
+
+i want the laptop to just always work for u in terms of updating the app for me. cus i like wanna be in bed away from laptop on charge. give cmd
+
+**L3 filler removed** · 0 fillers cut, 32 words
+
+I want the laptop to just always work for u in terms of updating the app for me. Cus i like wanna be in bed away from laptop on charge. Give cmd
+
+---
