@@ -12,14 +12,14 @@ struct ElioLookPreview: View {
     }
 
     private static func row(_ id: String, _ kind: ElioRow.Kind, _ text: String,
-                            start: Bool = true, end: Bool = true) -> ElioRow {
-        ElioRow(id: id, kind: kind, text: text, groupStart: start, groupEnd: end)
+                            start: Bool = true) -> ElioRow {
+        ElioRow(id: id, kind: kind, text: text, groupStart: start)
     }
 
     static let sample: [ElioRow] = {
         var rows: [ElioRow] = [
             row("s1", .user, "Morning. What have I got today?"),
-            row("s2", .agent, "Two things that cost you money if they slip: the SBS statement closes tonight, and the plyometrics site's renewal is tomorrow. Everything else can wait until after work.", end: false),
+            row("s2", .agent, "Two things that cost you money if they slip: the SBS statement closes tonight, and the plyometrics site's renewal is tomorrow. Everything else can wait until after work."),
             row("s3", .agent, "Groceries are the only errand. Want the list now or on the way home?", start: false),
             row("s4", .user, "On the way home. What's the renewal worth?"),
             row("s5", .agent, "Sixty-nine a year, and it bills to the card that expires in March, so it is worth switching now rather than twice."),
@@ -45,6 +45,7 @@ struct ElioLookPreview: View {
         )
         rows.append(clarify)
         rows.append(row("s10", .user, "Just tonight's dinner."))
+        rows.append(row("s11", .agent, "Done. Dinner for one, then: what's in the fridge decides it."))
         return rows
     }()
 }

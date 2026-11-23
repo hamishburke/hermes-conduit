@@ -9,14 +9,16 @@ uncommitted thread rewrite.
 - Unsigned simulator build: **BUILD SUCCEEDED** on every iteration
   (`xcodebuild build -destination generic/platform=iOS Simulator`).
 - Installed and launched with `-ElioLook`, the DEBUG sample-thread argument.
-  Screenshots `~/elio-shots/16-thread-light.png`, `17-thread-dark.png` and
-  `18-ax.png` (accessibility-extra-large) are from that build; `20-login.png`
-  is the unpaired first-run screen, no `-ElioLook`.
+  Screenshots `~/elio-shots/21-ref-light.png` and `22-ref-dark.png` are the
+  current reference-matching build; `18-ax.png` is the same screen at
+  accessibility-extra-large, and `20-login.png` is the unpaired first-run
+  screen with no `-ElioLook`.
 - Seen in the screenshots: white/black opaque bar with a centred "Elio" and one
-  trailing compose button; grey incoming bubbles, amber outgoing bubbles with
-  white text, grouped runs sharing a tail corner; a Markdown code block inside a
-  bubble; a clarify card with three grey choice rows; one growing composer with
-  no send button while empty.
+  trailing compose button; grey incoming bubbles, blue outgoing bubbles with
+  white text, uniform rounding and tighter runs from one speaker; a "Seen"
+  receipt under the last sent message; a Markdown code block inside a bubble;
+  a clarify question with one bubble per choice; one growing composer reading
+  "Message Elio".
 - Not done: install on the physical iPhone, pairing, a real send, streaming,
   VoiceOver, Reduce Motion, iPad, and the top-of-thread grouping. The simulator
   has no pairing, so `-ElioLook` feeds fixed rows; it proves layout, not the

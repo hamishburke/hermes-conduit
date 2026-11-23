@@ -19,7 +19,6 @@ struct ElioRow: Identifiable, Equatable {
     var attachments: Int = 0
     var isStreaming = false
     var groupStart = true
-    var groupEnd = true
 
     static func build(_ messages: [ChatMessage], streaming: String) -> [ElioRow] {
         var rows: [ElioRow] = []
@@ -65,14 +64,13 @@ struct ElioRow: Identifiable, Equatable {
         }
     }
 
-    /// Consecutive bubbles from the same speaker share a tail and sit closer
-    /// together, as a run of messages from one person does in Messages.
+    /// Consecutive messages from one speaker sit closer together, as they do
+    /// in Messages. Every bubble keeps the same rounding.
     private static func group(_ rows: inout [ElioRow]) {
         for index in rows.indices {
             guard rows[index].kind == .user || rows[index].kind == .agent else { continue }
             if index > 0, rows[index - 1].kind == rows[index].kind {
                 rows[index].groupStart = false
-                rows[index - 1].groupEnd = false
             }
         }
     }

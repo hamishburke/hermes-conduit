@@ -1,25 +1,15 @@
 #if ELIO_PERSONAL
 import SwiftUI
 
-/// A message bubble drawn from system colours and system type. The bar and
-/// composer around it are the system's own; nothing in the thread is custom
-/// chrome from the wider app.
+private let elioBubbleRadius: CGFloat = 20
+
+/// A message bubble: blue and right-aligned when Hamish sent it, system grey
+/// and left-aligned when Elio did. Every bubble rounds the same way, as the
+/// reference thread does.
 struct ElioBubble: View {
     let row: ElioRow
 
     private var isUser: Bool { row.kind == .user }
-    private let radius: CGFloat = 19
-    private let tail: CGFloat = 5
-
-    private var shape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: radius,
-            bottomLeadingRadius: isUser || !row.groupEnd ? radius : tail,
-            bottomTrailingRadius: !isUser || !row.groupEnd ? radius : tail,
-            topTrailingRadius: radius,
-            style: .continuous
-        )
-    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -41,12 +31,16 @@ struct ElioBubble: View {
             }
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
-            .background(shape.fill(isUser ? Color(uiColor: .conduitUserBubble) : Color(uiColor: .secondarySystemBackground)))
+            .background(
+                RoundedRectangle(cornerRadius: elioBubbleRadius, style: .continuous)
+                    .fill(isUser ? Color(uiColor: .systemBlue)
+                          : Color(uiColor: .secondarySystemBackground))
+            )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: spoken))
             if !isUser { Spacer(minLength: 0) }
         }
-        .padding(.top, row.groupStart ? 10 : 2)
+        .padding(.top, row.groupStart ? 8 : 3)
     }
 
     private var spoken: String {
@@ -81,14 +75,12 @@ struct ElioTypingBubble: View {
             .padding(.horizontal, 15)
             .padding(.vertical, 13)
             .background(
-                UnevenRoundedRectangle(topLeadingRadius: 19, bottomLeadingRadius: 5,
-                                       bottomTrailingRadius: 19, topTrailingRadius: 19,
-                                       style: .continuous)
+                RoundedRectangle(cornerRadius: elioBubbleRadius, style: .continuous)
                     .fill(Color(uiColor: .secondarySystemBackground))
             )
-            Spacer(minLength: 56)
+            Spacer(minLength: 0)
         }
-        .padding(.top, 10)
+        .padding(.top, 8)
         .accessibilityLabel(Text(verbatim: "Elio is typing"))
     }
 
@@ -98,56 +90,51 @@ struct ElioTypingBubble: View {
     }
 }
 
-/// A question from Elio, answered with a tap. A clarify that cannot be
-/// answered strands the turn, so it is drawn as a decision rather than prose.
+/// A question from Elio, drawn as a message with its answers as messages
+/// under it. A clarify that cannot be answered strands the turn.
 struct ElioClarifyCard: View {
     let row: ElioRow
     var onAnswer: (String, String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(row.clarify?.questions ?? []) { question in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(verbatim: question.question)
-                        .font(.body)
-                    if let answer = question.answer, !answer.isEmpty {
-                        Text(verbatim: answer)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    } else if question.isAnswerable, !question.isFreeText {
-                        ForEach(question.choices) { choice in
-                            Button {
-                                onAnswer(question.id, choice.value)
-                            } label: {
-                                Text(verbatim: choice.label)
-                                    .font(.body)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 11)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .fill(Color(uiColor: .tertiarySystemFill))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(question.status == .submitting || question.status == .expired)
+                bubble(Text(verbatim: question.question))
+                if let answer = question.answer, !answer.isEmpty {
+                    bubble(Text(verbatim: answer))
+                        .foregroundStyle(.secondary)
+                } else if question.isAnswerable, !question.isFreeText {
+                    ForEach(question.choices) { choice in
+                        Button {
+                            onAnswer(question.id, choice.value)
+                        } label: {
+                            bubble(Text(verbatim: choice.label))
                         }
-                    } else if question.isAnswerable {
-                        Text(verbatim: "Type your answer below.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        .buttonStyle(.plain)
+                        .disabled(question.status == .submitting || question.status == .expired)
                     }
+                } else if question.isAnswerable {
+                    bubble(Text(verbatim: "Type your answer below.")
+                            .foregroundStyle(.secondary))
                 }
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
-        .padding(.trailing, 40)
-        .padding(.top, 10)
+        .padding(.top, 8)
+    }
+
+    private func bubble(_ text: Text) -> some View {
+        HStack(spacing: 0) {
+            text
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: elioBubbleRadius, style: .continuous)
+                        .fill(Color(uiColor: .secondarySystemBackground))
+                )
+            Spacer(minLength: 40)
+        }
     }
 }
 
@@ -166,44 +153,43 @@ struct ElioApprovalCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             if let approval {
-                Text(verbatim: approval.description.isEmpty ? approval.command : approval.description)
-                    .font(.body)
+                bubble(Text(verbatim: approval.description.isEmpty
+                            ? approval.command : approval.description))
                 if approval.status == .pending || approval.status == .error {
                     ForEach(choices, id: \.self) { choice in
                         if choice != "always" || approval.allowPermanent {
                             Button {
                                 onAnswer(choice)
                             } label: {
-                                Text(verbatim: approvalLabel(choice))
-                                    .font(.body)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 11)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                            .fill(Color(uiColor: .tertiarySystemFill))
-                                    )
+                                bubble(Text(verbatim: approvalLabel(choice)))
                             }
                             .buttonStyle(.plain)
                         }
                     }
                 } else {
-                    Text(verbatim: approvalOutcome(approval))
-                        .font(.subheadline)
+                    bubble(Text(verbatim: approvalOutcome(approval)))
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 19, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
-        .padding(.trailing, 40)
-        .padding(.top, 10)
+        .padding(.top, 8)
+    }
+
+    private func bubble(_ text: Text) -> some View {
+        HStack(spacing: 0) {
+            text
+                .font(.body)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: elioBubbleRadius, style: .continuous)
+                        .fill(Color(uiColor: .secondarySystemBackground))
+                )
+            Spacer(minLength: 40)
+        }
     }
 
     private func approvalLabel(_ choice: String) -> String {

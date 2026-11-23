@@ -24,6 +24,16 @@ struct ElioChatScreen: View {
         previewRows == nil && appState.turnState.isRunning && appState.streamingText.isEmpty
     }
 
+    /// The last message Hamish sent, once Elio has answered it or is working
+    /// on it. "Seen" here means Hermes started its turn, not a delivery
+    /// receipt this app invented.
+    private var seenRowID: String? {
+        guard let index = rows.lastIndex(where: { $0.kind == .user }) else { return nil }
+        if index < rows.count - 1 { return rows[index].id }
+        guard previewRows == nil, appState.turnState.isRunning else { return nil }
+        return rows[index].id
+    }
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
@@ -84,6 +94,14 @@ struct ElioChatScreen: View {
             switch row.kind {
             case .user, .agent:
                 ElioBubble(row: row)
+                if row.id == seenRowID {
+                    Text(verbatim: "Seen")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.top, 2)
+                        .padding(.trailing, 2)
+                }
             case .clarify:
                 ElioClarifyCard(row: row) { questionId, answer in
                     guard let requestId = row.clarify?.requestId else { return }
@@ -118,7 +136,7 @@ struct ElioChatScreen: View {
                     .padding(.horizontal, 8)
             }
             ElioComposer(text: $draft, focused: $composerFocused,
-                         prompt: pendingFreeTextQuestion() == nil ? "Message" : "Answer Elio",
+                         prompt: pendingFreeTextQuestion() == nil ? "Message Elio" : "Answer Elio",
                          onSend: send)
         }
         .padding(.horizontal, 12)
