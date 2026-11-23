@@ -57,7 +57,7 @@ A private personal-build overlay of the phone app. Related entries: Opening a
 Bot Chat, The chat Conduit opens on, Notifications, Composer drafts, and A
 connection's first reads. Their upstream rulings remain unchanged.
 
-**Siblings:** personal iPhone/iPad shell and Settings access (done) · canonical
+**Siblings:** personal cached thread shows open failures and retry; clarification refusal restores its composer text; scene drafts follow the confirmed session (source implemented) · personal iPhone/iPad shell and Settings access (done) · canonical
 Bot Chat selection and reconnect (existing opener reused) · notification/session
 link routing (personal-only restriction) · transcript, clarify cards, composer,
 voice drafts and offline queue (existing lifecycle reused) · stable personal composer, local hidden logs and opaque bubbles (source implemented) · scoped durable drafts (source implemented) · chats sheet receives AppState and localizes its copy button (source implemented) · scroller (unchanged) · personal build
@@ -100,7 +100,7 @@ an upstream navigation or wire-contract change.
 - No pin reassignment UI or personal-shell translations; see the
   personal README for precise scope, recovery and validation limits.
 
-**Checked:** 2026-11-24, chats sheet environment and copy label updated on the unmerged base; Linux localization and test-planner gates passed. Swift compilation not run. 2026-11-23, uncommitted PASS2 against PASS1 8b907adca30d59944f16758aeae7a858e6801267. Linux static gates and 242 bounded Python tests passed; new XCTest methods not run. No upstream PR or sibling deployment. See `personal/VALIDATION.md`.
+**Checked:** 2026-11-24, clarification acceptance, cached open failures and session draft fencing reviewed; Swift compilation and device verification pending. 2026-11-24, chats sheet environment and copy label updated on the unmerged base; Linux localization and test-planner gates passed. Swift compilation not run. 2026-11-23, uncommitted PASS2 against PASS1 8b907adca30d59944f16758aeae7a858e6801267. Linux static gates and 242 bounded Python tests passed; new XCTest methods not run. No upstream PR or sibling deployment. See `personal/VALIDATION.md`.
 
 ## Hermes is waiting on you
 

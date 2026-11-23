@@ -18,7 +18,21 @@ struct ElioChatScreen: View {
     @State private var following = true
     @State private var threadWidth: CGFloat = 0
     @State private var showsChats = ProcessInfo.processInfo.arguments.contains("-ElioLookChats")
-    @SceneStorage("elio.composer.draft") private var draft = ""
+    @SceneStorage private var draft: String
+    let draftSessionID: String?
+    let draftScope: String
+
+    init(onOpenSettings: @escaping () -> Void, previewRows: [ElioRow]? = nil,
+         previewPicksReaction: Bool = false, previewState: ElioAvatar.State? = nil,
+         draftSessionID: String? = nil, draftScope: String = "preview") {
+        self.onOpenSettings = onOpenSettings
+        self.previewRows = previewRows
+        self.previewPicksReaction = previewPicksReaction
+        self.previewState = previewState
+        self.draftSessionID = draftSessionID
+        self.draftScope = draftScope
+        _draft = SceneStorage(wrappedValue: "", "elio.composer.draft." + draftScope)
+    }
     @FocusState private var composerFocused: Bool
 
     private let bottomID = "elio-bottom"
@@ -305,14 +319,16 @@ struct ElioChatScreen: View {
     }
 
     private func send() {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let originalDraft = draft
+        let text = originalDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         if let pending = pendingFreeTextQuestion() {
             draft = ""
             Task {
-                await appState.respondToClarify(requestId: pending.requestId,
+                let accepted = await appState.respondToClarify(requestId: pending.requestId,
                                                questionId: pending.questionId,
                                                answer: text)
+                if !accepted { restoreDraft(originalDraft) }
             }
             return
         }
@@ -320,10 +336,18 @@ struct ElioChatScreen: View {
         following = true
         Task {
             let sent = await appState.sendMessage(text)
-            if !sent, draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                draft = text
-            }
+            if !sent { restoreDraft(originalDraft) }
         }
+    }
+
+    private func restoreDraft(_ text: String) {
+        let parts = [appState.dashboardIDOnScreen?.uuidString ?? "", appState.activeProfile,
+                     appState.activeSessionId ?? ""]
+        let currentScope = parts.map { "\($0.utf8.count):\($0)" }.joined()
+        guard let draftSessionID, appState.elioShowsConfirmedConversation,
+              appState.activeSessionId == draftSessionID, currentScope == draftScope,
+              draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        draft = text
     }
 
     /// A question that wants words rather than a tap: the composer answers

@@ -26,15 +26,16 @@ extension AppState {
     /// the question may go blank (`ClarifyActivity.mayLeaveBlank`), so the
     /// user can decline instead of answering and the agent goes on. Only nil
     /// skips: an empty or blank string is ignored.
-    func respondToClarify(requestId: String, questionId: String? = nil, answer: String?) async {
+    @discardableResult
+    func respondToClarify(requestId: String, questionId: String? = nil, answer: String?) async -> Bool {
         // On the chat's own runtime: another combined dashboard's chat
         // opened in place acts there (AppState+FarChat.swift).
-        if await onChatRuntime(unreachable: (), { await self.respondToClarify(requestId: requestId, questionId: questionId, answer: answer) }) != nil { return }
+        if let accepted = await onChatRuntime(unreachable: false, { await self.respondToClarify(requestId: requestId, questionId: questionId, answer: answer) }) { return accepted }
         let trimmedAnswer = answer?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmedAnswer?.isEmpty != true,
               let index = messages.firstIndex(where: { $0.clarify?.requestId == requestId }),
               var activity = messages[index].clarify,
-              !activity.isExpired else { return }
+              !activity.isExpired else { return false }
 
         let questionIndex: Int?
         if let questionId {
@@ -47,7 +48,7 @@ extension AppState {
         guard let questionIndex,
               activity.questions[questionIndex].status == .pending
                   || activity.questions[questionIndex].status == .error,
-              trimmedAnswer != nil || activity.mayLeaveBlank(activity.questions[questionIndex]) else { return }
+              trimmedAnswer != nil || activity.mayLeaveBlank(activity.questions[questionIndex]) else { return false }
 
         activity.questions[questionIndex].status = .submitting
         activity.questions[questionIndex].error = nil
@@ -60,6 +61,7 @@ extension AppState {
             requestId: requestId,
             to: clarifyCardTarget()
         )
+        return true
     }
 
     /// The chat a clarify card on screen belongs to, read when its answer

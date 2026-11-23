@@ -30,8 +30,23 @@ struct ElioConversationShell: View {
         ZStack {
             Color(uiColor: .systemBackground).ignoresSafeArea()
             if appState.elioShowsConfirmedConversation || appState.elioShowsCachedConversation {
-                ElioChatScreen(onOpenSettings: onOpenSettings)
+                ElioChatScreen(onOpenSettings: onOpenSettings,
+                               draftSessionID: appState.activeSessionId,
+                               draftScope: draftScope)
+                    .id(draftScope)
                     .readableChatColumn()
+                    .safeAreaInset(edge: .top) {
+                        if let failure, !appState.elioShowsConfirmedConversation {
+                            HStack {
+                                Text(verbatim: failure).font(.caption)
+                                Spacer()
+                                Button(AppLocalization.string("Retry")) { retry += 1 }
+                                    .disabled(opening)
+                            }
+                            .padding(10)
+                            .background(.regularMaterial)
+                        }
+                    }
             } else {
                 unavailable
             }
@@ -39,6 +54,12 @@ struct ElioConversationShell: View {
         .windowSideContent()
         .task(id: request) { await openConversation() }
         .onAppear { appState.dismissSidebarDrawer() }
+    }
+
+    private var draftScope: String {
+        let parts = [appState.dashboardIDOnScreen?.uuidString ?? "", appState.activeProfile,
+                     appState.activeSessionId ?? ""]
+        return parts.map { "\($0.utf8.count):\($0)" }.joined()
     }
 
     private var unavailable: some View {
@@ -85,7 +106,7 @@ struct ElioConversationShell: View {
         guard !Task.isCancelled, let scope = expectedScope,
               scope == appState.elioConversationScope, workspaceProfile == appState.activeProfile else { return }
         guard appState.isConnected else {
-            failure = "Hermes is offline. Saved history cannot be verified yet. Your saved draft is kept and will return when this conversation reconnects."
+            failure = AppLocalization.string("Gateway connection is unavailable.")
             return
         }
         // Join the connection's existing roster flight, or refresh it. A kept
@@ -99,12 +120,12 @@ struct ElioConversationShell: View {
               workspaceProfile == appState.activeProfile,
               pinned == appState.defaults.string(forKey: scope.pinStorageKey) else { return }
         guard appState.botRosterVerifiedForCurrentConnection else {
-            failure = "Could not verify this server's default bot. Check the connection in Elio settings, then retry."
+            failure = AppLocalization.string("A network problem stopped that. Check your connection and try again.")
             return
         }
         guard let bot = ElioConversationSelection.bot(in: appState.botRoster, pinnedProfile: pinned) else {
             appState.elioOpenedConversation = nil
-            failure = "The pinned default bot is unavailable or ambiguous. Restore that profile on this server, then retry."
+            failure = AppLocalization.string("Conversations unavailable")
             return
         }
         appState.defaults.set(bot.name, forKey: scope.pinStorageKey)
@@ -115,7 +136,7 @@ struct ElioConversationShell: View {
               workspaceProfile == appState.activeProfile else { return }
         guard outcome == .opened, appState.activeBotChatProfile == bot.name,
               appState.elioShowsConfirmedConversation else {
-            failure = appState.errorMessage ?? "Could not open your canonical Bot Chat. Retry when Hermes is ready."
+            failure = appState.errorMessage ?? AppLocalization.string("A network problem stopped that. Check your connection and try again.")
             return
         }
         appState.dismissSidebarDrawer()
