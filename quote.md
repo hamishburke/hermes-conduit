@@ -28,6 +28,25 @@ file is that, for his words.
    later overturned, because the record is of what he asked for, not of what
    shipped.
 
+## Levels
+
+This file holds one level only: what he said. `scripts/quote-levels.py` derives
+`quote.levels.md` beside it, where every entry is shown raw and then at three
+mechanical levels:
+
+- **L0** raw, including the ums and the mis-transcribed names.
+- **L1** names fixed, from a declared glossary. Nothing else changes.
+- **L2** L1 plus immediate repeats and stutters cut ("we can we can").
+- **L3** L2 plus spoken filler cut (um, uh, erm, "you know", "I mean", and
+  "like" only where it stands alone between commas).
+
+Two rules about using them. An article that quotes him may use **L1** and no
+higher, because a fixed name is not a changed sentence. And "like" is left in
+almost everywhere on purpose: in his speech it usually carries meaning ("like
+how iMessage is made"), so a rung that removed it would change what he said.
+Anything past L3 is editorial, written by hand, signed, and never presented as
+a quote.
+
 ## Format
 
 ```
