@@ -34,6 +34,9 @@ struct ElioComposer: View {
         .padding(.leading, 16)
         .padding(.trailing, 46)
         .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .simultaneousGesture(TapGesture().onEnded { focused.wrappedValue = true })
         .conduitGlassSurface(cornerRadius: 24, interactive: true)
         .overlay(alignment: .bottomTrailing) {
             if canSend {

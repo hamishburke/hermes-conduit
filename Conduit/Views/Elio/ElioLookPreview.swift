@@ -8,9 +8,12 @@ struct ElioLookPreview: View {
     static let launchArgument = "-ElioLook"
 
     var body: some View {
-        ElioChatScreen(onOpenSettings: {}, previewRows: Self.sample,
-                       previewPicksReaction: ProcessInfo.processInfo.arguments
-                        .contains("-ElioLookPicker"))
+        let args = ProcessInfo.processInfo.arguments
+        return ElioChatScreen(onOpenSettings: {}, previewRows: Self.sample,
+                              previewPicksReaction: args.contains("-ElioLookPicker"),
+                              previewState: args.contains("-ElioLookWorking") ? .working
+                                : args.contains("-ElioLookNeeds") ? .needsYou
+                                : args.contains("-ElioLookFinished") ? .finished : nil)
     }
 
     private static func row(_ id: String, _ kind: ElioRow.Kind, _ text: String,

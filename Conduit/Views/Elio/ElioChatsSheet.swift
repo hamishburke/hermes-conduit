@@ -18,15 +18,31 @@ struct ElioChatsSheet: View {
 
     private var openSessionID: String? { appState.activeSessionId }
 
+    private var todaySessions: [SessionSummary] {
+        appState.sessions.filter { session in
+            guard let at = session.lastActivityAt else { return session.id == openSessionID }
+            return Date(timeIntervalSince1970: at) >= todayCutoff
+        }
+    }
+
+    /// Midnight, unless it is barely past it: at 2 a.m. the chats someone means
+    /// by "today" are still last night's.
+    private var todayCutoff: Date {
+        let calendar = Calendar.current
+        let midnight = calendar.startOfDay(for: .now)
+        guard Date.now.timeIntervalSince(midnight) < 6 * 3600 else { return midnight }
+        return calendar.date(byAdding: .day, value: -1, to: midnight) ?? midnight
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    if appState.sessions.isEmpty {
-                        Text(verbatim: "No chats yet.")
+                    if todaySessions.isEmpty {
+                        Text(verbatim: "No chats today.")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(appState.sessions) { session in
+                    ForEach(todaySessions) { session in
                         Button {
                             open(session)
                         } label: {
@@ -36,7 +52,7 @@ struct ElioChatsSheet: View {
                         .disabled(opening != nil)
                     }
                 } header: {
-                    Text(verbatim: "Your chats with Elio")
+                    Text(verbatim: "Today")
                 }
 
                 if let openFailure {

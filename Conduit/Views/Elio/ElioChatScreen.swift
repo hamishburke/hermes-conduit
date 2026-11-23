@@ -13,6 +13,8 @@ struct ElioChatScreen: View {
     var previewRows: [ElioRow]? = nil
     /// DEBUG look build only: open the first reaction picker.
     var previewPicksReaction = false
+    /// DEBUG look build only: force the persona's state for a screenshot.
+    var previewState: ElioAvatar.State? = nil
     @State private var following = true
     @State private var threadWidth: CGFloat = 0
     @State private var showsChats = ProcessInfo.processInfo.arguments.contains("-ElioLookChats")
@@ -103,15 +105,11 @@ struct ElioChatScreen: View {
                     Button {
                         showsChats = true
                     } label: {
-                        Image(avatarAsset)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 30, height: 30)
-                            .clipShape(Circle())
-                            .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+                        ElioAvatar(asset: avatarAsset, state: agentState)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(verbatim: "Elio"))
+                    .accessibilityValue(Text(verbatim: agentStateWords))
                     .accessibilityHint(Text(verbatim: "Opens your chats and settings"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -206,6 +204,49 @@ struct ElioChatScreen: View {
     private var avatarAsset: String {
         colorScheme == .dark ? AppIconChoice.dark.previewAssetName
             : AppIconChoice.light.previewAssetName
+    }
+
+    /// What the persona is saying at a glance: something is waiting on him,
+    /// this chat is working, a chat finished while he was here, or nothing.
+    private var agentState: ElioAvatar.State {
+        if let previewState { return previewState }
+        if currentNeedsYou || otherNeedsYou { return .needsYou }
+        if appState.turnState.isRunning { return .working }
+        if otherFinished { return .finished }
+        return .idle
+    }
+
+    private var agentStateWords: String {
+        switch agentState {
+        case .needsYou: return "Needs you"
+        case .working: return "Working"
+        case .finished: return "A chat finished"
+        case .idle: return "Idle"
+        }
+    }
+
+    private var openSessionIDs: Set<String> {
+        var ids = Set(appState.liveChatSessionIDs())
+        if let active = appState.activeSessionId { ids.insert(active) }
+        return ids
+    }
+
+    private var currentNeedsYou: Bool {
+        appState.pendingClarifyMessageID != nil
+    }
+
+    /// A wait in a chat that isn't the one on screen.
+    private var otherNeedsYou: Bool {
+        let open = openSessionIDs
+        return appState.needsYou.items.contains { item in
+            item.sessionIDs.contains { !open.contains($0) }
+        }
+    }
+
+    /// Something landed unread somewhere else, so the dot is not for this chat.
+    private var otherFinished: Bool {
+        let open = openSessionIDs
+        return appState.sessions.contains { $0.isUnread == true && !open.contains($0.id) }
     }
 
     /// Messages slide up into a blur and a darkening gradient instead of
