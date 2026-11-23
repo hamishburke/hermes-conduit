@@ -15,6 +15,28 @@ personal build pass.
 - Automated compiler status is the exact personal-branch workflow result, not the
   upstream app's CI. Static Python tests do not prove Swift compiles.
 
+## PASS2 local record — 2026-11-23
+
+Uncommitted source changes compared with PASS1
+`8b907adca30d59944f16758aeae7a858e6801267`. Linux checks only:
+242 bounded Python tests passed; localization, sheet/transcript environments,
+fixed text sizes, hand-written equality and test-plan validation passed. Unit
+class count remains 224. PASS2 XCTest additions were not run; no Swift compiler,
+simulator, device or visual/accessibility pass is claimed. The parent-owned
+workflow was not modified or triggered. Exact evidence: `personal/VALIDATION.md`.
+
+In the checklist below also verify: cancel a long transcription without sending,
+retry its saved clip, kill/relaunch after typed and dictated edits, sign out while
+a draft write is pending, and receive a canonical notification on cold launch.
+A cold offline transcript remains unavailable until identity can be verified;
+the scoped draft must survive and return on reconnect. Also verify workspace
+`work` with pinned bot `personal` and no Bot Chat in the ordinary catalog; a
+same-scope reconnect during dictation/paste must retain the editor and keyboard.
+At 320pt width, record with a multiline draft at ordinary and accessibility
+text sizes: the editor should occupy its own row, labels should wrap, and
+Stop must return an editable draft for explicit Send. These fix-pass checks
+remain unrun on simulator/iPhone.
+
 ## Simulator and iPhone checklist
 
 | Scenario | Procedure and acceptance | Simulator | iPhone |

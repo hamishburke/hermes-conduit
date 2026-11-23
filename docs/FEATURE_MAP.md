@@ -60,7 +60,7 @@ connection's first reads. Their upstream rulings remain unchanged.
 **Siblings:** personal iPhone/iPad shell and Settings access (done) · canonical
 Bot Chat selection and reconnect (existing opener reused) · notification/session
 link routing (personal-only restriction) · transcript, clarify cards, composer,
-voice drafts, offline queue and scroller (reused unchanged) · personal build
+voice drafts and offline queue (existing lifecycle reused) · stable personal composer, local hidden logs and opaque bubbles (source implemented) · scoped durable drafts (source implemented) · scroller (unchanged) · personal build
 identity and documentation (done) · standard Conduit, Watch, CarPlay, widgets,
 desktop and notifier (not needed: this overlay enables the flag only on its
 phone app, embeds no extensions and changes no shared protocol)
@@ -74,7 +74,8 @@ an upstream navigation or wire-contract change.
 - Canonical opener and personal notification gate: `Conduit/Services/AppState+OpenChat.swift`
 - Existing restore/queue: `Conduit/Services/AppState+ChatResume.swift`, `Conduit/Services/AppState+PendingSend.swift`
 - Overlay and limits: `personal/project.yml`, `personal/Elio.entitlements`, `personal/README.md`
-- Tests extending the existing class: `ConduitTests/BotModeTests+Elio.swift`
+- Composer persistence/presentation: `Conduit/Views/Components/ComposerBar.swift`, `Conduit/Views/Components/ComposerDraftStore.swift`, `Conduit/Views/Components/ComposerDictationStopButton.swift`, `Conduit/Views/ChatView.swift`, `Conduit/Views/ChatRowState.swift`
+- Tests extending existing classes: `ConduitTests/BotModeTests+Elio.swift`, `ConduitTests/ComposerDraftStoreTests.swift`
 
 **Rulings**
 - ELIO_PERSONAL selects the shell at MainView's navigation seam while retaining
@@ -86,18 +87,20 @@ an upstream navigation or wire-contract change.
 - Show no transcript/composer without successful canonical-open evidence for
   the current scope/profile/session. Unknown identity fails closed with Retry.
 - Other-thread notification taps cannot change the pin, switch dashboards or
-  migrate decision cards. Only explicitly scoped, confirmed thread ids pass.
+  migrate decision cards. Cold taps can await connection and resolve the pinned canonical thread through the authoritative resolver before normal routing. Both supplied ids must belong to the selected lineage; matching a profile alone is insufficient.
+- Personal draft records include normalized server scope, dashboard, profile and durable owner; text, attachments and replies restore without transmitting. Edits coalesce for 300 ms, lifecycle/send/removal flush, and clear/send generation fences remain. Unsaved servers and unknown owners stay memory-only.
+- Personal text/voice controls stay in a stable row; transcription cancellation keeps the draft and any saved clip in the existing Retry path. No auto-send, voice-message substitution or transport rewrite. Logs hide locally; no Hermes display setting write.
 
 **Open gaps**
 - No Xcode/Swift toolchain on the implementation host: no compile, XCTest,
   simulator, device, signing or push verification. Entitlements remain empty.
-- Cold offline launch withholds even the saved chat until identity is verified.
+- Cold offline launch withholds saved history/composer until identity is verified: the existing cache does not prove normalized server + canonical pin together. Persisted drafts survive the withheld transcript.
   Advanced inherited flows are not comprehensively restricted; an unrelated
   selected chat is hidden and Retry returns to the canonical bot.
-- No pin reassignment UI or personal-shell translations in PASS1; see the
+- No pin reassignment UI or personal-shell translations; see the
   personal README for precise scope, recovery and validation limits.
 
-**Checked:** 2026-11-23, local uncommitted PASS1 against base 47d3f9e22d4245de8aedd78174068b8e5dfe033c; no upstream PR or sibling deployment.
+**Checked:** 2026-11-23, uncommitted PASS2 against PASS1 8b907adca30d59944f16758aeae7a858e6801267. Linux static gates and 242 bounded Python tests passed; new XCTest methods not run. No upstream PR or sibling deployment. See `personal/VALIDATION.md`.
 
 ## Hermes is waiting on you
 

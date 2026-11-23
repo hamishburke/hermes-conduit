@@ -26,3 +26,7 @@ targets:
         weak: true
       - sdk: ActivityKit.framework
         weak: true
+  ConduitTests:
+    settings:
+      base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ELIO_PERSONAL"

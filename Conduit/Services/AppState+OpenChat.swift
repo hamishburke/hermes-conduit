@@ -407,6 +407,9 @@ extension AppState {
                 viewportTransitionGeneration: viewportTransitionGeneration
             )
         case .success(.create):
+            #if ELIO_PERSONAL
+            elioOpenedConversation = nil
+            #endif
             return await createAndOpenBotChat(
                 bot,
                 client: client,
@@ -430,6 +433,16 @@ extension AppState {
         presentationMigrationSessionIDs: Set<String> = [],
         viewportTransitionGeneration: UInt64? = nil
     ) async -> Bool {
+        #if ELIO_PERSONAL
+        let personalScope = elioConversationScope
+        let personalWorkspaceProfile = activeProfile
+        // Lookup has established the lineage. A different registry invalidates
+        // the old proof; the same registry may safely introduce its new tip
+        // before performSessionOpen switches the active alias.
+        elioOpenedConversation = elioOpenedConversation?.retainingForCanonicalOpen(
+            scope: personalScope, workspaceProfile: personalWorkspaceProfile,
+            profile: bot.name, registryID: registryID, resumeID: resumeID)
+        #endif
         let writes = errorMessageWrites
         noteBotChatOpen([resumeID, registryID], bot: bot)
         let outcome = await performSessionOpen(
@@ -439,6 +452,21 @@ extension AppState {
             conversationProfile: bot.name,
             preferredTitle: bot.displayLabel
         )
+        #if ELIO_PERSONAL
+        if outcome == .opened, !Task.isCancelled,
+           botOpenFenceIsCurrent(epoch: epoch, client: client),
+           chatViewportTransitionIsCurrent(viewportTransitionGeneration),
+           let scope = personalScope, scope == elioConversationScope,
+           activeProfile == personalWorkspaceProfile,
+           defaults.string(forKey: scope.pinStorageKey) == bot.name,
+           activeBotChatProfile == bot.name, let session = activeSessionId {
+            elioOpenedConversation = ElioOpenedConversation(
+                scope: scope, profile: bot.name, workspaceProfile: personalWorkspaceProfile,
+                sessionIDs: liveChatSessionIDs().union([registryID, resumeID, session])
+                    .union(elioOpenedConversation?.sessionIDs ?? []),
+                durableSessionID: registryID)
+        }
+        #endif
         // Only a GENUINE failure owned by this invocation may publish: a
         // superseded open (the user navigated elsewhere, or re-tapped this
         // same bot so a newer open owns the viewport) is navigation state,
@@ -1400,9 +1428,18 @@ extension AppState {
     func openNotificationTargetOutcome(_ target: ConduitNotificationTarget) async -> NotificationOpenOutcome {
         #if ELIO_PERSONAL
         // Before any dashboard switch, decision migration or draft exposure.
-        // A cold launch without confirmed identity fails closed as well.
-        guard elioShowsConfirmedConversation,
+        // Cold launch and compression may need fresh canonical evidence.
+        guard let scope = elioConversationScope,
+              ElioConversationSelection.canResolveExternalOpen(
+                target, scope: scope, pinnedProfile: defaults.string(forKey: scope.pinStorageKey)) else {
+            errorMessage = ElioConversationSelection.externalOpenUnavailable
+            return .failed
+        }
+        guard await elioPrepareExternalOpen(target),
               elioOpenedConversation?.permitsExternalOpen(target, scope: elioConversationScope) == true else {
+            // Keep a correctly scoped cold tap pending while disconnected.
+            // Its session still needs authoritative proof before any route.
+            if !Task.isCancelled, elioConversationScope == scope, !isConnected { return .retry }
             errorMessage = ElioConversationSelection.externalOpenUnavailable
             return .failed
         }

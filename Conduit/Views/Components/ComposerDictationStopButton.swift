@@ -20,7 +20,12 @@ struct ComposerDictationStopButton: View {
                 .animation(ConduitMotion.ease(reduceMotion: reduceMotion), value: face)
                 .foregroundStyle(waits ? Color.secondary : Color.white)
                 // One width for every face, so the row keeps its layout.
+                #if ELIO_PERSONAL
+                .frame(width: 112)
+                .frame(minHeight: ComposerBar.controlSize)
+                #else
                 .frame(width: 112, height: ComposerBar.controlSize)
+                #endif
                 .padding(.horizontal, 4)
                 .contentShape(ComposerBar.controlHitShape)
         }
@@ -52,14 +57,24 @@ struct ComposerDictationStopButton: View {
             if face == .transcribing {
                 ProgressView()
                     .controlSize(.small)
+                    #if ELIO_PERSONAL
+                    .conduitFixedGlyph()
+                    #endif
             } else {
                 Image(systemName: symbol(face))
+                    #if ELIO_PERSONAL
+                    .conduitFixedGlyph()
+                    #endif
             }
             title(face)
+                #if ELIO_PERSONAL
+                .fixedSize(horizontal: false, vertical: true)
+                #else
                 // Longer translations shrink rather than wrap or widen
                 // the row.
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                #endif
         }
     }
 

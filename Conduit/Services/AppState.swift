@@ -3074,7 +3074,11 @@ final class AppState: ObservableObject {
     /// open), so a typed draft survives navigating to a room and back — a
     /// per-view store would be destroyed by the very navigation the save
     /// is meant to survive.
+    #if ELIO_PERSONAL
+    lazy var composerDraftStore = ComposerDraftStore(defaults: defaults)
+    #else
     let composerDraftStore = ComposerDraftStore()
+    #endif
     /// Coalesces presentation-cache flushes during streaming so we
     /// don't serialize and write UserDefaults on every WebSocket frame.
     var presentationCacheFlushTask: Task<Void, Never>?

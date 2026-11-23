@@ -93,6 +93,9 @@ struct ChatRowState: Equatable {
         retryableReplyID = facts.retryableReplyID
         readAloudUnavailable = appState.readAloudUnavailableReason != nil
         displayPreferences = appState.displayPreferences
+        #if ELIO_PERSONAL
+        displayPreferences = displayPreferences.elioPresentation
+        #endif
         voiceCallLinksRevision = appState.voiceCallChatLinksRevision
         latestLiveRows = facts.latestLiveRows
         // A tap sends, so the chips show only while a send can go.

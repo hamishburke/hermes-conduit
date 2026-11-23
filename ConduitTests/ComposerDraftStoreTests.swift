@@ -4,6 +4,158 @@ import XCTest
 
 @MainActor
 final class ComposerDraftStoreTests: XCTestCase {
+    #if ELIO_PERSONAL
+    private func personalDraftBacking() throws -> UserDefaults {
+        let suite = "ComposerDraftStoreTests.personal.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+        return defaults
+    }
+
+    func testPersonalPersistedRoundTripKeepsTypedTranscriptAttachmentReplyAndOwner() throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "runtime")
+        let draft = ComposerDraft(text: "Typed introduction\nDictated words, edited before sending.",
+                                  attachments: [Attachment(id: "file", name: "note.txt", uri: "file:///note.txt",
+                                                           mimeType: "text/plain", kind: .document)],
+                                  replyReference: ComposerReplyReference(authorName: "Elio", text: "A reply", threadID: "thread"))
+        let first = ComposerDraftStore(defaults: defaults)
+        first.usePersonalScope(scope)
+        first.save(draft, for: key, owner: "durable")
+        first.flushPersistence()
+        let second = ComposerDraftStore(defaults: defaults)
+        XCTAssertEqual(second.draft(for: key), .empty, "Scope must be activated before restoration")
+        second.usePersonalScope(scope)
+        XCTAssertEqual(second.draft(for: key), draft)
+        XCTAssertEqual(second.owner(of: key), "durable")
+        XCTAssertEqual(second.draft(for: ComposerDraftKey(dashboard: key.dashboard, profile: "other", sessionID: key.sessionID)), .empty)
+        XCTAssertEqual(second.draft(for: ComposerDraftKey(dashboard: UUID(), profile: key.profile, sessionID: key.sessionID)), .empty)
+    }
+
+    func testPersonalCoalescedEditsPersistTheLatestDraftWithoutExplicitFlush() async throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "root")
+        let store = ComposerDraftStore(defaults: defaults)
+        store.usePersonalScope(scope)
+        store.save(ComposerDraft(text: "first words", attachments: []), for: key, owner: "root")
+        store.save(ComposerDraft(text: "latest edited transcript", attachments: []), for: key)
+        try await Task.sleep(for: .milliseconds(400))
+        let restored = ComposerDraftStore(defaults: defaults)
+        restored.usePersonalScope(scope)
+        XCTAssertEqual(restored.draft(for: key).text, "latest edited transcript")
+    }
+
+    func testPersonalSuccessfulSubmissionRemovalIsDurableAndCannotRemoveNewerEdit() throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "durable")
+        let store = ComposerDraftStore(defaults: defaults)
+        store.usePersonalScope(scope)
+        store.save(ComposerDraft(text: "sent", attachments: []), for: key, owner: key.sessionID)
+        let oldBucket = store.submissionBucket(for: key)
+        store.save(ComposerDraft(text: "new edit", attachments: []), for: key)
+        store.removeDraft(for: oldBucket)
+        store.flushPersistence()
+        let restored = ComposerDraftStore(defaults: defaults)
+        restored.usePersonalScope(scope)
+        XCTAssertEqual(restored.draft(for: key).text, "new edit")
+        store.removeDraft(for: store.submissionBucket(for: key))
+        let afterSend = ComposerDraftStore(defaults: defaults)
+        afterSend.usePersonalScope(scope)
+        XCTAssertEqual(afterSend.draft(for: key), .empty, "Removal flushes without waiting for debounce")
+    }
+
+    func testPersonalFailedSubmissionRestorationSurvivesRelaunchAlongsideNewWords() throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "durable")
+        let store = ComposerDraftStore(defaults: defaults)
+        store.usePersonalScope(scope)
+        store.save(ComposerDraft(text: "new words", attachments: []), for: key, owner: key.sessionID)
+        let failed = ComposerDraft(text: "failed dictated message", attachments: [],
+                                   replyReference: ComposerReplyReference(authorName: "Elio", text: "Question"))
+        store.restoreFailedSubmission(failed, for: key, owner: key.sessionID)
+        let expected = store.draft(for: key)
+        store.flushPersistence()
+        let restored = ComposerDraftStore(defaults: defaults)
+        restored.usePersonalScope(scope)
+        XCTAssertEqual(restored.draft(for: key), expected)
+        XCTAssertTrue(expected.text.contains("new words"))
+        XCTAssertTrue(expected.text.contains("failed dictated message"))
+        XCTAssertEqual(expected.replyReference, failed.replyReference)
+    }
+
+    func testPersonalPersistenceRejectsReplacedServerUnsavedServerAndMissingOwner() throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "durable")
+        let store = ComposerDraftStore(defaults: defaults)
+        store.usePersonalScope(scope)
+        store.save(ComposerDraft(text: "private", attachments: []), for: key, owner: key.sessionID)
+        let unsaved = ComposerDraftKey(dashboard: nil, profile: "default", sessionID: "durable")
+        store.save(ComposerDraft(text: "unsaved server", attachments: []), for: unsaved, owner: "durable")
+        let unowned = ComposerDraftKey(dashboard: key.dashboard, profile: key.profile, sessionID: "unowned")
+        store.save(ComposerDraft(text: "unknown owner", attachments: []), for: unowned)
+        store.flushPersistence()
+        let restored = ComposerDraftStore(defaults: defaults)
+        restored.usePersonalScope(scope)
+        XCTAssertEqual(restored.draft(for: unsaved), .empty)
+        XCTAssertEqual(restored.draft(for: unowned), .empty)
+        let other = try XCTUnwrap(ElioConversationScope(dashboardID: scope.dashboardID, server: "https://replacement.example"))
+        restored.usePersonalScope(other)
+        XCTAssertEqual(restored.draft(for: key), .empty)
+    }
+
+    func testPersonalClearSignoutAndDeferredSaveCannotResurrectDrafts() async throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "durable")
+        let draft = ComposerDraft(text: "unsent", attachments: [])
+        let store = ComposerDraftStore(defaults: defaults)
+        store.usePersonalScope(scope)
+        let beforeClear = store.clearCount(for: key.dashboard)
+        store.save(draft, for: key, owner: key.sessionID)
+        store.removeDrafts(forDashboard: scope.dashboardID)
+        store.save(draft, for: key, owner: key.sessionID, expectedClearCount: beforeClear)
+        try await Task.sleep(for: .milliseconds(400))
+        let afterSignout = ComposerDraftStore(defaults: defaults)
+        afterSignout.usePersonalScope(scope)
+        XCTAssertEqual(afterSignout.draft(for: key), .empty)
+        store.save(draft, for: key, owner: key.sessionID)
+        store.flushPersistence()
+        // Sign-out must remove even records whose scope hasn't been loaded.
+        let cold = ComposerDraftStore(defaults: defaults)
+        cold.removeDrafts(forDashboard: scope.dashboardID)
+        let afterColdSignout = ComposerDraftStore(defaults: defaults)
+        afterColdSignout.usePersonalScope(scope)
+        XCTAssertEqual(afterColdSignout.draft(for: key), .empty)
+        store.removeAll()
+        let afterClear = ComposerDraftStore(defaults: defaults)
+        afterClear.usePersonalScope(scope)
+        XCTAssertEqual(afterClear.draft(for: key), .empty)
+    }
+
+    func testPersonalPersistencePreservesCapacityAndOwnerMigration() throws {
+        let defaults = try personalDraftBacking()
+        let scope = try XCTUnwrap(ElioConversationScope(dashboardID: UUID(), server: "https://home.example"))
+        let store = ComposerDraftStore(capacity: 1, defaults: defaults)
+        store.usePersonalScope(scope)
+        let old = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "old")
+        let runtime = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "runtime")
+        let owner = ComposerDraftKey(dashboard: scope.dashboardID, profile: "default", sessionID: "owner")
+        store.save(ComposerDraft(text: "evicted", attachments: []), for: old, owner: "old")
+        store.save(ComposerDraft(text: "kept", attachments: []), for: runtime, owner: "owner")
+        store.returnDraft(from: runtime, toOwner: "owner")
+        let restored = ComposerDraftStore(capacity: 1, defaults: defaults)
+        restored.usePersonalScope(scope)
+        XCTAssertEqual(restored.keys, [owner])
+        XCTAssertEqual(restored.draft(for: owner).text, "kept")
+        XCTAssertEqual(restored.owner(of: owner), "owner")
+    }
+    #endif
+
     func testProgrammaticRestoredSlashDraftKeepsSuggestionsHidden() {
         XCTAssertFalse(
             ComposerBar.shouldShowSlashSuggestions(

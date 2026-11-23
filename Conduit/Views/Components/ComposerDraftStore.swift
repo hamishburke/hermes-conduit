@@ -60,6 +60,91 @@ final class ComposerDraftStore {
     /// on their own (a switch to a saved dashboard).
     private var unsavedServerClearCount: UInt64 = 0
 
+    #if ELIO_PERSONAL
+    /// Nil in ordinary unit tests. AppState supplies its own defaults; no
+    /// implicit global backing, and unsaved servers never reach disk.
+    private var backing: UserDefaults?
+    private static let storageKey = "elio.personal.drafts.v1"
+    private var records: [PersonalRecord] = []
+    private var scopes: [UUID: ElioConversationScope] = [:]
+    private var persistenceTask: Task<Void, Never>?
+
+    private struct PersonalRecord: Codable {
+        let scope: ElioConversationScope
+        let profile: String
+        let sessionID: String
+        let owner: String
+        let text: String
+        let attachments: [Attachment]
+        let reply: Reply?
+
+        struct Reply: Codable {
+            let authorName: String
+            let text: String
+            let threadID: String?
+        }
+    }
+
+    convenience init(capacity: Int = 12, defaults: UserDefaults) {
+        self.init(capacity: capacity)
+        backing = defaults
+        records = defaults.data(forKey: Self.storageKey)
+            .flatMap { try? JSONDecoder().decode([PersonalRecord].self, from: $0) } ?? []
+    }
+
+    /// Activate only records whose dashboard AND normalized server agree.
+    /// Owner checks/migrations at loadDraft remain authoritative for aliases.
+    func usePersonalScope(_ scope: ElioConversationScope) {
+        guard scopes[scope.dashboardID] != scope else { return }
+        if scopes[scope.dashboardID] != nil {
+            removeDrafts(forDashboard: scope.dashboardID)
+        }
+        scopes[scope.dashboardID] = scope
+        let kept = records.filter { $0.scope == scope }
+        records.removeAll { $0.scope.dashboardID == scope.dashboardID }
+        for record in kept {
+            let key = ComposerDraftKey(dashboard: scope.dashboardID, profile: record.profile, sessionID: record.sessionID)
+            guard !key.isNewConversation, !record.owner.isEmpty else { continue }
+            let reply = record.reply.map {
+                ComposerReplyReference(authorName: $0.authorName, text: $0.text, threadID: $0.threadID)
+            }
+            save(ComposerDraft(text: record.text, attachments: record.attachments, replyReference: reply),
+                 for: key, owner: record.owner)
+        }
+        schedulePersistence()
+    }
+
+    private func schedulePersistence() {
+        guard backing != nil else { return }
+        persistenceTask?.cancel()
+        persistenceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            self?.flushPersistence()
+        }
+    }
+
+    /// Lifecycle/send/clear flushes bypass coalescing. Encoding attachments
+    /// happens here, never on each keystroke.
+    func flushPersistence() {
+        persistenceTask?.cancel()
+        persistenceTask = nil
+        guard let backing else { return }
+        var snapshot = records
+        for key in order {
+            guard let dashboard = key.dashboard, let scope = scopes[dashboard],
+                  !key.isNewConversation, let owner = owners[key], !owner.isEmpty,
+                  let draft = drafts[key] else { continue }
+            let reply = draft.replyReference.map {
+                PersonalRecord.Reply(authorName: $0.authorName, text: $0.text, threadID: $0.threadID)
+            }
+            snapshot.append(PersonalRecord(scope: scope, profile: key.profile, sessionID: key.sessionID,
+                                           owner: owner, text: draft.text, attachments: draft.attachments, reply: reply))
+        }
+        if let data = try? JSONEncoder().encode(snapshot) { backing.set(data, forKey: Self.storageKey) }
+    }
+    #endif
+
     init(capacity: Int = 12) {
         self.capacity = max(0, capacity)
     }
@@ -72,7 +157,10 @@ final class ComposerDraftStore {
 
     /// Saves `draft` under `key`. `owner`, the durable id of the chat it's
     /// for, replaces the one kept; nil keeps it (the same key's chat).
-    func save(_ draft: ComposerDraft, for key: ComposerDraftKey, owner: String? = nil) {
+    func save(_ draft: ComposerDraft, for key: ComposerDraftKey, owner: String? = nil, expectedClearCount: UInt64? = nil) {
+        #if ELIO_PERSONAL
+        if let expectedClearCount, expectedClearCount != clearCount(for: key.dashboard) { return }
+        #endif
         if draft.isEmpty {
             removeDraft(for: key)
             return
@@ -88,6 +176,9 @@ final class ComposerDraftStore {
         refreshGeneration(for: key)
         touch(key)
         evictIfNeeded(in: key.dashboard)
+        #if ELIO_PERSONAL
+        schedulePersistence()
+        #endif
     }
 
     func hasDraft(for key: ComposerDraftKey) -> Bool {
@@ -117,6 +208,9 @@ final class ComposerDraftStore {
         let owner = owners[source]
         removeDraft(for: source)
         save(draft, for: destination, owner: owner)
+        #if ELIO_PERSONAL
+        flushPersistence()
+        #endif
     }
 
     /// A draft whose key's runtime id now names another chat goes back
@@ -128,6 +222,9 @@ final class ComposerDraftStore {
         guard source != destination, let draft = drafts[source] else { return }
         removeDraft(for: source)
         save(self.draft(for: destination).restoring(draft), for: destination, owner: owner)
+        #if ELIO_PERSONAL
+        flushPersistence()
+        #endif
     }
 
     func submissionBucket(for key: ComposerDraftKey) -> ComposerDraftSubmissionBucket {
@@ -139,6 +236,10 @@ final class ComposerDraftStore {
         generations.removeValue(forKey: key)
         owners.removeValue(forKey: key)
         order.removeAll { $0 == key }
+        #if ELIO_PERSONAL
+        // Removal (including successful send) must beat any deferred save.
+        flushPersistence()
+        #endif
     }
 
     func removeDraft(for bucket: ComposerDraftSubmissionBucket) {
@@ -152,7 +253,13 @@ final class ComposerDraftStore {
     /// the composer on screen still keeps its own.
     func removeDrafts(forDashboard dashboard: UUID) {
         dashboardClearCounts[dashboard, default: 0] &+= 1
+        #if ELIO_PERSONAL
+        records.removeAll { $0.scope.dashboardID == dashboard }
+        #endif
         removeDraftsKept(under: dashboard)
+        #if ELIO_PERSONAL
+        flushPersistence()
+        #endif
     }
 
     /// The drafts a server with no saved dashboard left go: nothing can
@@ -183,6 +290,10 @@ final class ComposerDraftStore {
         generations.removeAll()
         owners.removeAll()
         order.removeAll()
+        #if ELIO_PERSONAL
+        records.removeAll()
+        flushPersistence()
+        #endif
     }
 
     private func touch(_ key: ComposerDraftKey) {

@@ -109,12 +109,20 @@ struct ChatView: View {
     /// The running turn as the transcript draws it, from AppState now.
     @MainActor
     static func liveTurn(in appState: AppState, working: TranscriptWorkingLine = TranscriptWorkingLine()) -> TranscriptModel.LiveTurn {
-        TranscriptModel.LiveTurn(
-            shape: appState.liveTurn.shape,
+        var shape = appState.liveTurn.shape
+        var shownWork = working
+        #if ELIO_PERSONAL
+        shape.thinkingID = nil
+        shownWork.toolName = nil
+        shownWork.toolInput = nil
+        shownWork.toolTitle = nil
+        #endif
+        return TranscriptModel.LiveTurn(
+            shape: shape,
             isBusy: appState.isBusy,
             repliesElsewhere: appState.activeChatRepliesElsewhere,
             isShown: appState.savedCopyScrollSessionKey == nil,
-            working: working,
+            working: shownWork,
             agentsAwaited: appState.backgroundAgentsAwaited
         )
     }
@@ -187,7 +195,7 @@ struct ChatView: View {
         return TranscriptModel.Input(
             targetsRevision: scroller.targetCache.renderingRevision,
             conversation: appState.activeChatScrollSessionIdentity,
-            displayPreferences: appState.displayPreferences,
+            displayPreferences: transcriptDisplayPreferences,
             isBusy: appState.chatOnScreenIsBusy,
             disclosureRevision: stepToggleRevision,
             live: Self.liveTurn(in: appState, working: workingLine),
@@ -306,6 +314,14 @@ struct ChatView: View {
         }
     }
 
+    private var transcriptDisplayPreferences: ProfileDisplayPreferences {
+        #if ELIO_PERSONAL
+        appState.displayPreferences.elioPresentation
+        #else
+        appState.displayPreferences
+        #endif
+    }
+
     /// Whether the chat shows the minimised call bar (and a reading's
     /// player) above its composer: not while words are typed, except
     /// beside the list, which leaves its own bar to this one (#2270).
@@ -327,9 +343,11 @@ struct ChatView: View {
             }
             planDock
             // Predictive guesses (off unless turned on in Settings > Chat).
+            #if !ELIO_PERSONAL
             PredictiveRow(store: appState.predictive, appState: appState)
             // The chat's standing goal, loop and heartbeat (issue 821).
             SessionControlDock(store: appState.sessionControl, appState: appState, openChatID: appState.activeSessionId)
+            #endif
             // The chat's queue on the Webapp's listener: messages waiting
             // their turn, and a turn a gateway restart cut off.
             AuthorityQueueDock(store: appState.authorityQueue, appState: appState, openChatID: appState.activeSessionId)
@@ -2119,7 +2137,11 @@ struct UserMessageContent: View, Equatable {
     }
 
     private var attachmentViews: some View {
+        #if ELIO_PERSONAL
+        UserAttachmentPreviews(message: message, gatewayResolver: gatewayResolver, onAccent: false)
+        #else
         UserAttachmentPreviews(message: message, gatewayResolver: gatewayResolver)
+        #endif
     }
 
     var body: some View {
@@ -2131,7 +2153,11 @@ struct UserMessageContent: View, Equatable {
         let voice = VoiceMessage.parse(text)
         VStack(alignment: .leading, spacing: 9) {
             if let reply {
+                #if ELIO_PERSONAL
+                ReplyReferenceQuoteCard(quote: reply.quote, onAccentSurface: false, quotedIn: message.id)
+                #else
                 ReplyReferenceQuoteCard(quote: reply.quote, quotedIn: message.id)
+                #endif
             }
 
             if let voice {
@@ -2140,7 +2166,11 @@ struct UserMessageContent: View, Equatable {
                     HugsIdealWidth {
                         Text(verbatim: voice.transcript)
                             .scaledFont(.subheadline)
+                            #if ELIO_PERSONAL
+                            .foregroundStyle(.primary)
+                            #else
                             .foregroundStyle(.white.opacity(0.88))
+                            #endif
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .accessibilityLabel(AppLocalization.string("Transcript: \(voice.transcript)"))
@@ -2149,7 +2179,11 @@ struct UserMessageContent: View, Equatable {
                 // The text fills the column for its own layout; a sent
                 // bubble fits a short message instead.
                 HugsIdealWidth {
+                    #if ELIO_PERSONAL
+                    MarkdownText(source: text)
+                    #else
                     MarkdownText(source: text, foregroundStyle: .white, usesAccentSurface: true)
+                    #endif
                 }
             }
 
@@ -2164,6 +2198,9 @@ struct UserMessageContent: View, Equatable {
             // it was worked out again from the text's UIKit views on every
             // frame the chat scrolled.
             RoundedRectangle(cornerRadius: 21, style: .continuous)
+                #if ELIO_PERSONAL
+                .fill(Color(uiColor: .secondarySystemBackground))
+                #else
                 .fill(
                     LinearGradient(
                         colors: [.conduitUserBubble, .conduitUserBubbleShade],
@@ -2172,6 +2209,7 @@ struct UserMessageContent: View, Equatable {
                     )
                 )
                 .shadow(color: Color.conduitAccent.opacity(0.16), radius: 14, y: 6)
+                #endif
         }
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
@@ -2858,6 +2896,10 @@ struct SettledAssistantMessageContent: View, Equatable {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        #if ELIO_PERSONAL
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 21))
+        #endif
     }
 }
 

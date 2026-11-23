@@ -5847,7 +5847,7 @@ final class BotModeTests: XCTestCase {
     /// EXISTING suite so a test can simulate a relaunch (a second process
     /// reading the same persisted state); the caller owns that suite's
     /// teardown in that case.
-    private func makeBotHarness(
+    func makeBotHarness(
         configureDefaults: (UserDefaults) -> Void = { _ in },
         sessionCatalogLoader: ((Bool) async throws -> [SessionSummary])? = nil,
         reusing reusedDefaults: UserDefaults? = nil,

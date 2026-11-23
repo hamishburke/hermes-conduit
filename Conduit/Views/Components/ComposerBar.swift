@@ -36,6 +36,9 @@ struct ComposerBar: View {
     private var appState: AppState { updates.appState }
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    #if ELIO_PERSONAL
+    @Environment(\.scenePhase) private var personalScenePhase
+    #endif
     /// The text view's own size, which a wide column grows
     /// (`ComposerPasteTextView.bodyFont`).
     @Environment(\.sizeCategory) private var sizeCategory
@@ -392,7 +395,11 @@ struct ComposerBar: View {
     }
 
     private var showsSlashSuggestionList: Bool {
+        #if ELIO_PERSONAL
+        return false
+        #else
         isShowingSlashSuggestions && !filteredSlashCommands.isEmpty
+        #endif
     }
 
     // A pick, by click, tap or key, puts the cursor after what it put in,
@@ -444,9 +451,13 @@ struct ComposerBar: View {
 
     /// Roster bots matching a trailing `@query`, while the field has focus and takes text.
     private var mentionCandidates: [MentionAutocomplete.Candidate] {
+        #if ELIO_PERSONAL
+        return []
+        #else
         guard isTyping, mentionsDismissedFor != text,
               let query = MentionAutocomplete.activeQuery(in: text) else { return [] }
         return MentionAutocomplete.filter(appState.composerMentionCandidates, query: query)
+        #endif
     }
 
     private var action: ComposerAction {
@@ -500,11 +511,15 @@ struct ComposerBar: View {
     /// messages (not an offline copy or a chat still being made) shows Send dimmed, not the lock of a composer that can't
     /// send at all.
     private var showsEmptyDraftSend: Bool {
+        #if ELIO_PERSONAL
+        return lookAction == .unavailable && (appState.composerIsEnabled || heldLook != nil)
+        #else
         Self.showsEmptyDraftSend(
             action: lookAction,
             voiceButtonBeside: keepsVoiceButtonBeside,
             composerIsEnabled: appState.composerIsEnabled || heldLook != nil
         )
+        #endif
     }
 
     static func showsEmptyDraftSend(action: ComposerAction, voiceButtonBeside: Bool, composerIsEnabled: Bool) -> Bool {
@@ -532,9 +547,13 @@ struct ComposerBar: View {
     /// Solid, so the chat scrolling under the composer never shows
     /// through what is being typed.
     private var composerFoundation: Color {
+        #if ELIO_PERSONAL
+        return Color(uiColor: .secondarySystemBackground)
+        #else
         colorScheme == .dark
             ? Color(red: 0.072, green: 0.080, blue: 0.106)
             : Color.white
+        #endif
     }
 
     private var composerStroke: Color {
@@ -616,7 +635,12 @@ struct ComposerBar: View {
                 )
             }
             // The suggestion row folds while typing and asks once it pauses.
+            #if !ELIO_PERSONAL
             appState.predictiveDraftChanged(newValue)
+            #endif
+            #if ELIO_PERSONAL
+            persistPersonalEdits()
+            #endif
         }
         .onChange(of: updates.inputs.prefillToken) { _, _ in
             applyPendingPrefill()
@@ -671,6 +695,16 @@ struct ComposerBar: View {
     var body: some View {
         let _ = TranscriptPerf.note(.composerBarBody)
         composerWithRequestHandlers
+        #if ELIO_PERSONAL
+        .onChange(of: attachments) { _, _ in persistPersonalEdits() }
+        .onChange(of: replyReference) { _, _ in persistPersonalEdits() }
+        .onChange(of: personalScenePhase) { _, phase in
+            if phase != .active {
+                persistPersonalEdits()
+                draftStore.flushPersistence()
+            }
+        }
+        #endif
         .onAppear {
             if loadedDraftKey == nil {
                 loadDraft(for: activeDraftKey)
@@ -701,6 +735,9 @@ struct ComposerBar: View {
             ) {
                 saveDraft(for: key)
             }
+            #if ELIO_PERSONAL
+            draftStore.flushPersistence()
+            #endif
         }
         .onChange(of: updates.inputs.takesText) { _, takesText in
             // The sheet has no room for the composer's notices; the inline
@@ -746,6 +783,9 @@ struct ComposerBar: View {
             ) {
                 saveDraft(for: key)
             }
+            #if ELIO_PERSONAL
+            draftStore.flushPersistence()
+            #endif
         }
         // A session resume can complete before the gateway has refreshed its
         // context accounting. Recheck once the active composer is on screen,
@@ -818,6 +858,7 @@ struct ComposerBar: View {
                 attachmentStrip
             }
 
+            #if !ELIO_PERSONAL
             if showsSlashSuggestionList {
                 SlashSuggestionsOverlay(
                     commands: filteredSlashCommands,
@@ -828,7 +869,6 @@ struct ComposerBar: View {
                 .padding(.top, 8)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-
             if !showsSlashSuggestionList && !mentionCandidates.isEmpty {
                 MentionSuggestionList(candidates: mentionCandidates, highlighted: suggestionHighlight) { candidate in
                     pickMentionSuggestion(candidate)
@@ -837,6 +877,7 @@ struct ComposerBar: View {
                 .padding(.top, 8)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+            #endif
 
             // A voice message being recorded or previewed takes the field's
             // place; the draft waits underneath.
@@ -846,6 +887,27 @@ struct ComposerBar: View {
                 }
                     .transition(.opacity)
             } else {
+                #if ELIO_PERSONAL
+                // AnyLayout keeps the same editor instance (and focus) as
+                // recording starts. Its own row leaves the draft readable on
+                // a 320pt screen and at accessibility text sizes.
+                let stacked = dictationHoldsSendSlot || sizeCategory.isAccessibilityCategory
+                let layout = stacked
+                    ? AnyLayout(VStackLayout(spacing: 4))
+                    : AnyLayout(HStackLayout(alignment: .bottom, spacing: 4))
+                layout {
+                    composerField
+                    HStack(alignment: .bottom, spacing: 4) {
+                        attachmentButton.conduitFixedGlyph()
+                        dictateButton.conduitFixedGlyph()
+                        if stacked { Spacer(minLength: 0) }
+                        // One trailing action; dictation labels inherit the
+                        // requested text size and wrap within their slot.
+                        trailingSlot
+                    }
+                }
+                .padding(6)
+                #else
                 // The field spans the card; every control sits in the row
                 // below it, so a long draft wraps across the full width (#335).
                 // Resting (V2), attach and dictate sit beside the field and the
@@ -894,6 +956,7 @@ struct ComposerBar: View {
                     controlsRow
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                #endif
             }
         }
         .background(composerFoundation, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
@@ -902,7 +965,11 @@ struct ComposerBar: View {
                 .strokeBorder(composerStroke, lineWidth: 1)
         }
         .opacity(appState.turnState == .unsupportedGateway ? 0.7 : 1)
+        #if ELIO_PERSONAL
+        .animation(ConduitMotion.ease(reduceMotion: reduceMotion), value: action)
+        #else
         .animation(ConduitMotion.transition, value: action)
+        #endif
         // Send and the mic give way to dictation's Stop, and come back.
         .animation(ConduitMotion.ease(reduceMotion: reduceMotion), value: dictationHoldsSendSlot)
         .preferredColorScheme(appState.themePreference.colorScheme)
@@ -1127,7 +1194,11 @@ struct ComposerBar: View {
 
     /// V2's resting composer: attach and the placeholder in a slim bar.
     private var rests: Bool {
+        #if ELIO_PERSONAL
+        return false
+        #else
         restsWhenIdle && !staysExpanded && !inUseOrHeld
+        #endif
     }
 
     /// What animates the bar open and closed. The layout rule changing (a
@@ -1142,7 +1213,11 @@ struct ComposerBar: View {
     /// chat's header instead (`roundButtonBeside`), and these still give
     /// way to it.
     private var keepsVoiceButtonBeside: Bool {
+        #if ELIO_PERSONAL
+        return false
+        #else
         restsWhenIdle && staysExpanded
+        #endif
     }
 
     /// The round button stands beside the composer: not on a Mac where all
@@ -1183,13 +1258,23 @@ struct ComposerBar: View {
     /// voice/send slot on the right, like the Codex composer (#335).
     /// The round controls match the context ring, leaving the model chip
     /// more width (#466).
+    #if ELIO_PERSONAL
+    static let controlSize: CGFloat = 44
+    #else
     static let controlSize: CGFloat = 32
+    #endif
     /// The gap between two round controls side by side.
     static let controlSpacing: CGFloat = 12
     /// Taps land a little outside each control, to 44 pt both ways: half
     /// the gap between round controls, so neighbours never overlap
     /// (issue 2525).
-    static var controlHitShape: some Shape { Rectangle().inset(by: -controlSpacing / 2) }
+    static var controlHitShape: some Shape {
+        #if ELIO_PERSONAL
+        Rectangle()
+        #else
+        Rectangle().inset(by: -controlSpacing / 2)
+        #endif
+    }
     /// The resting row's gap between the field and its controls.
     static let restingRowSpacing: CGFloat = 2
     /// The resting Stop's leading padding: none beside the mic, whose own
@@ -1640,9 +1725,14 @@ struct ComposerBar: View {
 
     @ViewBuilder
     private var trailingSlot: some View {
+        #if ELIO_PERSONAL
+        let showsVoice = false
+        #else
+        let showsVoice = appState.showsComposerVoiceButton && !keepsVoiceButtonBeside
+        #endif
         let control = Self.trailingControl(
             action: lookAction,
-            showsVoiceButton: appState.showsComposerVoiceButton && !keepsVoiceButtonBeside,
+            showsVoiceButton: showsVoice,
             holdsDictation: dictationHoldsSendSlot
         )
         if #available(iOS 26.0, *) {
@@ -1674,7 +1764,11 @@ struct ComposerBar: View {
     /// tap; the menu form has no large content viewer (as ChatTitleControl).
     @ViewBuilder
     private var composerActionButton: some View {
+        #if ELIO_PERSONAL
+        let choices: [ComposerSendChoice] = []
+        #else
         let choices = sendChoices
+        #endif
         if choices.isEmpty {
             Button(action: performComposerAction) {
                 composerActionFace
@@ -1740,7 +1834,12 @@ struct ComposerBar: View {
         HStack(spacing: 6) {
             Image(systemName: actionSymbol)
                 .font(.system(size: looksStopOnly ? 12 : 14, weight: .semibold))
+                #if ELIO_PERSONAL
+                .conduitFixedGlyph()
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                #else
                 .contentTransition(.symbolEffect(.replace))
+                #endif
             if let actionTitle {
                 Text(actionTitle)
                     .scaledFont(.caption.weight(.semibold))
@@ -1751,7 +1850,11 @@ struct ComposerBar: View {
         .frame(minWidth: actionTitle == nil ? Self.controlSize : 86, minHeight: Self.controlSize)
         .padding(.horizontal, actionTitle == nil ? 0 : 4)
         .contentShape(Self.controlHitShape)
+        #if ELIO_PERSONAL
+        .animation(ConduitMotion.ease(reduceMotion: reduceMotion), value: lookAction)
+        #else
         .animation(ConduitMotion.transition, value: lookAction)
+        #endif
     }
 
     private var composerActionChrome: ComposerActionChrome {
@@ -1935,6 +2038,12 @@ struct ComposerBar: View {
         let outboundText = choice?.slashCommand.map { "/\($0) \(repliedText)" } ?? repliedText
         let submittedAction = choice.map { $0.busyInputMode?.composerAction ?? .send } ?? action
         let submittedDraftKey = loadedDraftKey ?? activeDraftKey
+        #if ELIO_PERSONAL
+        // Capture an up-to-date generation before the editor is emptied.
+        // Later edits get their own generation and survive this send's ACK.
+        persistPersonalEdits()
+        draftStore.flushPersistence()
+        #endif
         let submittedDraftBucket = draftStore.submissionBucket(for: submittedDraftKey)
         let submittedClearCount = draftStore.clearCount(for: submittedDraftKey.dashboard)
         // A far chat's draft is its own dashboard's, not the screen's.
@@ -2162,6 +2271,15 @@ struct ComposerBar: View {
         // waits for its words.
         let isActive = isCapturing || dictation.isStarting || dictation.isTranscribing
         return Button {
+            #if ELIO_PERSONAL
+            if dictation.isTranscribing {
+                dictation.cancel()
+                persistPersonalEdits()
+                draftStore.flushPersistence()
+                composerErrorMessage = "Transcription cancelled. Your draft is kept. Any saved recording is available in Retry."
+                return
+            }
+            #endif
             switch ComposerDictation.tap(
                 isCapturing: dictation.isCapturing,
                 isStarting: dictation.isStarting,
@@ -2175,13 +2293,17 @@ struct ComposerBar: View {
             case .nothing: break
             }
         } label: {
-            Image(systemName: isCapturing ? "mic.fill" : "mic")
+            Image(systemName: personalDictationSymbol ?? (isCapturing ? "mic.fill" : "mic"))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(isCapturing ? Color.red : (looksAvailable ? Color.primary : Color.secondary))
                 // Pulses from the tap, so a start still waiting on
                 // permission or the microphone shows it's in flight.
                 .symbolEffect(.pulse, isActive: isActive && !reduceMotion)
+                #if ELIO_PERSONAL
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                #else
                 .contentTransition(.symbolEffect(.replace))
+                #endif
                 .frame(width: Self.controlSize, height: Self.controlSize)
                 .contentShape(Self.controlHitShape)
         }
@@ -2207,12 +2329,32 @@ struct ComposerBar: View {
             : (dictation.isStarting || dictation.isTranscribing ? "" : (appState.isVoiceInUse
                 ? AppLocalization.string("Dictation is unavailable while a voice conversation has the microphone", table: .chat)
                 : AppLocalization.string("Types what you say into the message", table: .chat))))
+        #if ELIO_PERSONAL
+        .accessibilityHint(Text(verbatim: dictation.isTranscribing
+            ? "Cancels transcription; keeps the draft and saved recording for Retry"
+            : (isCapturing ? "Stops dictation; the words stay in the draft"
+                : (dictation.isStarting ? "Cancels starting the microphone; keeps the draft"
+                    : "Dictates into the draft. Review the words, then send separately."))))
+        #endif
+    }
+
+    private var personalDictationSymbol: String? {
+        #if ELIO_PERSONAL
+        if dictation.isTranscribing || dictation.isStarting { return "xmark" }
+        #endif
+        return nil
     }
 
     private func dictateTitle(isCapturing: Bool) -> Text {
         if isCapturing { return Text("Stop dictation") }
         if dictation.isStarting { return Text("Cancel dictation") }
-        if dictation.isTranscribing { return Text("Transcribing") }
+        if dictation.isTranscribing {
+            #if ELIO_PERSONAL
+            return Text(verbatim: "Cancel transcription")
+            #else
+            return Text("Transcribing")
+            #endif
+        }
         return Text("Dictate")
     }
 
@@ -2776,9 +2918,20 @@ struct ComposerBar: View {
         draftStore.save(
             ComposerDraft(text: text, attachments: attachments, replyReference: replyReference),
             for: key,
-            owner: loadedDraftOwner ?? appState.composerDraftOwner(for: key)
+            owner: loadedDraftOwner ?? appState.composerDraftOwner(for: key),
+            expectedClearCount: loadedDraftClearCount
         )
     }
+
+    #if ELIO_PERSONAL
+    private func persistPersonalEdits() {
+        guard let key = Self.draftKeyToKeep(
+            loaded: loadedDraftKey, loadedClearCount: loadedDraftClearCount,
+            storeClearCount: draftStore.clearCount(for: loadedDraftKey?.dashboard)
+        ) else { return }
+        saveDraft(for: key)
+    }
+    #endif
 
     /// Drafts of this profile saved for a chat whose key's runtime id
     /// Hermes has since handed to another go back under their own chat's
@@ -2793,6 +2946,11 @@ struct ComposerBar: View {
     }
 
     private func loadDraft(for key: ComposerDraftKey) {
+        #if ELIO_PERSONAL
+        if let scope = appState.elioConversationScope, key.dashboard == scope.dashboardID {
+            draftStore.usePersonalScope(scope)
+        }
+        #endif
         // Saved for another chat under the id this one opens by (Hermes
         // handed the runtime id on), or under one a lookup below could take
         // for this chat's: it goes back under its own chat's durable id
@@ -2801,7 +2959,13 @@ struct ComposerBar: View {
         // Kept under another of the chat's ids (typed over its saved copy,
         // or in the New Chat that created it): it's this chat's draft.
         if !draftStore.hasDraft(for: key),
-           let other = draftStore.keys.first(where: { $0 != key && appState.composerDraftKeysAreSameChat($0, key) }) {
+           let other = draftStore.keys.first(where: { other in
+               #if ELIO_PERSONAL
+               if let owner = appState.composerDraftOwner(for: key),
+                  let keptOwner = draftStore.owner(of: other), keptOwner != owner { return false }
+               #endif
+               return other != key && appState.composerDraftKeysAreSameChat(other, key)
+           }) {
             draftStore.migrateDraft(from: other, to: key)
         }
         // Saved for this chat under a runtime id no row lists any more:

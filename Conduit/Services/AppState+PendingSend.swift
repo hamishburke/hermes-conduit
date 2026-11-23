@@ -670,7 +670,11 @@ extension AppState {
     /// The id a live chat's waiting message is kept under: its durable one,
     /// which outlives the runtime id the chat is open by.
     func durableComposerSessionID(for sessionID: String) -> String {
-        canonicalSessionID(for: sessionID) ?? sessionID
+        #if ELIO_PERSONAL
+        let key = ComposerDraftKey(dashboard: dashboardIDOnScreen, profile: activeProfile, sessionID: sessionID)
+        if let owner = elioCanonicalDraftOwner(for: key) { return owner }
+        #endif
+        return canonicalSessionID(for: sessionID) ?? sessionID
     }
 
     /// Whether two drafts are the same chat's: the same key, the chat under
@@ -696,6 +700,12 @@ extension AppState {
         // The lists and ids below are the dashboard on screen's: another
         // dashboard's draft is only ever its own key.
         guard lhs.dashboard == activeDashboardID else { return false }
+        #if ELIO_PERSONAL
+        if let owner = elioCanonicalDraftOwner(for: lhs),
+           let otherOwner = elioCanonicalDraftOwner(for: rhs) {
+            return owner == otherOwner
+        }
+        #endif
         if let replacement = shownChat.lostChatReplacement, lhs.profile == activeProfile,
            activeSessionId.map(replacement.fresh.contains) == true,
            replacement.lost.contains(lhs.sessionID) && replacement.fresh.contains(rhs.sessionID)
@@ -750,6 +760,9 @@ extension AppState {
     /// on screen: the owning row's stored id (else its id). Nil when no row
     /// owns the key's id, an alias two rows carry included (issue 2782).
     func composerDraftOwner(for key: ComposerDraftKey) -> String? {
+        #if ELIO_PERSONAL
+        if let owner = elioCanonicalDraftOwner(for: key) { return owner }
+        #endif
         // A far chat's draft: from its own dashboard's list, on its runtime.
         if let farRuntime = composerDraftFarRuntime(for: key) {
             return act(onRuntime: farRuntime) { composerDraftOwner(for: key) }
@@ -763,6 +776,11 @@ extension AppState {
     /// list names otherwise, or two rows carry it (issue 2782). An id no
     /// row lists says nothing, and the draft stays.
     func composerDraftKey(_ key: ComposerDraftKey, isNotChatOf owner: String) -> Bool {
+        #if ELIO_PERSONAL
+        if let canonicalOwner = elioCanonicalDraftOwner(for: key) {
+            return canonicalOwner != owner
+        }
+        #endif
         if let farRuntime = composerDraftFarRuntime(for: key) {
             return act(onRuntime: farRuntime) { composerDraftKey(key, isNotChatOf: owner) }
         }
