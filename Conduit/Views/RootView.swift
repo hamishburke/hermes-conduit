@@ -224,9 +224,11 @@ struct MainView: View {
                 CrashReportBanner()
                 // Another chat started waiting on the user (NeedsYou.swift);
                 // a call's screen shows it over the call.
+                #if !ELIO_PERSONAL
                 if !appState.isVoiceCallScreenPresented {
                     NeedsYouBanner(store: appState.needsYou)
                 }
+                #endif
                 // Calendar changes Hermes asked for (AppState+PhoneSync.swift);
                 // a call's screen shows them over the call.
                 if !appState.isVoiceCallScreenPresented {
@@ -577,6 +579,10 @@ struct MainView: View {
     /// column beside the chat.
     @ViewBuilder
     private var sidebarLayoutContent: some View {
+        #if ELIO_PERSONAL
+        ElioConversationShell(onOpenSettings: presentSettings)
+            .environment(\.windowSideInsets, windowSideInsets)
+        #else
         if useV2Shell {
             // V2 opens on its first tab (Bots, until the user reorders the
             // tabs, issue 2084), or on the chat iOS closed it on in the
@@ -611,6 +617,7 @@ struct MainView: View {
             chatNavigationContent
                 .environment(\.windowSideInsets, windowSideInsets)
         }
+        #endif
     }
 
     /// The existing chat shell, shared by both sidebar layouts so the drawer
@@ -782,12 +789,16 @@ struct MainView: View {
     /// active persistent sidebar already shows Sessions, so the request is
     /// consumed without opening a redundant drawer.
     private func presentPreferredReturnSurfaceIfNeeded() {
+        #if ELIO_PERSONAL
+        appState.dismissSidebarDrawer()
+        #else
         guard appState.claimPreferredReturnSurfacePresentation() else { return }
         guard SidebarLayoutPolicy.shouldPresentDrawerForReturnSurface(
             persistentSidebarActive: isPersistentSidebarActive,
             drawerPresented: appState.showSidebar
         ) else { return }
         appState.showSidebar = true
+        #endif
     }
 
     /// A call screen's top: the screenshot banner, then calendar changes
@@ -799,8 +810,10 @@ struct MainView: View {
             voiceScreenshotBanner
             PhoneChangeOverlay(engine: appState.phoneSync)
                 .environmentObject(appState)
+            #if !ELIO_PERSONAL
             NeedsYouBanner(store: appState.needsYou)
                 .environmentObject(appState)
+            #endif
             // Only V2 draws notices, as its shell does under the call.
             if useV2Shell, let notice = appState.pinSyncNotice {
                 V2NoticeBanner(notice: notice) { appState.dismissPinSyncNotice(notice.id) }

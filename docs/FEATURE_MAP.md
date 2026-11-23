@@ -51,6 +51,54 @@ maintainer decides (2026-10-20).
   results models read, the notifier's tool descriptions and skills,
   README.md and docs/.
 
+## Elio personal one-thread shell
+
+A private personal-build overlay of the phone app. Related entries: Opening a
+Bot Chat, The chat Conduit opens on, Notifications, Composer drafts, and A
+connection's first reads. Their upstream rulings remain unchanged.
+
+**Siblings:** personal iPhone/iPad shell and Settings access (done) · canonical
+Bot Chat selection and reconnect (existing opener reused) · notification/session
+link routing (personal-only restriction) · transcript, clarify cards, composer,
+voice drafts, offline queue and scroller (reused unchanged) · personal build
+identity and documentation (done) · standard Conduit, Watch, CarPlay, widgets,
+desktop and notifier (not needed: this overlay enables the flag only on its
+phone app, embeds no extensions and changes no shared protocol)
+
+**Desktop app:** not applicable: this is an opt-in personal iOS app build, not
+an upstream navigation or wire-contract change.
+
+**Code**
+- Shell seam and shared sheets: `Conduit/Views/RootView.swift`, `Conduit/Views/ElioConversationShell.swift`
+- Personal identity and selection: `Conduit/Services/ElioConversationSelection.swift`, `Conduit/Services/AppState.swift`
+- Canonical opener and personal notification gate: `Conduit/Services/AppState+OpenChat.swift`
+- Existing restore/queue: `Conduit/Services/AppState+ChatResume.swift`, `Conduit/Services/AppState+PendingSend.swift`
+- Overlay and limits: `personal/project.yml`, `personal/Elio.entitlements`, `personal/README.md`
+- Tests extending the existing class: `ConduitTests/BotModeTests+Elio.swift`
+
+**Rulings**
+- ELIO_PERSONAL selects the shell at MainView's navigation seam while retaining
+  lifecycle and sheets; cross-chat Needs you banners are hidden, while the
+  pinned chat's clarification cards remain. Without it the standard app's behavior is unchanged.
+- Pin the verified server default profile per dashboard UUID and server URL;
+  never use latest activity or a bare saved session pointer. Canonical opening
+  and reconnect use the existing Bot Chat API and its confirmed-absence policy.
+- Show no transcript/composer without successful canonical-open evidence for
+  the current scope/profile/session. Unknown identity fails closed with Retry.
+- Other-thread notification taps cannot change the pin, switch dashboards or
+  migrate decision cards. Only explicitly scoped, confirmed thread ids pass.
+
+**Open gaps**
+- No Xcode/Swift toolchain on the implementation host: no compile, XCTest,
+  simulator, device, signing or push verification. Entitlements remain empty.
+- Cold offline launch withholds even the saved chat until identity is verified.
+  Advanced inherited flows are not comprehensively restricted; an unrelated
+  selected chat is hidden and Retry returns to the canonical bot.
+- No pin reassignment UI or personal-shell translations in PASS1; see the
+  personal README for precise scope, recovery and validation limits.
+
+**Checked:** 2026-11-23, local uncommitted PASS1 against base 47d3f9e22d4245de8aedd78174068b8e5dfe033c; no upstream PR or sibling deployment.
+
 ## Hermes is waiting on you
 
 An approval, a clarify question or a phone change that Hermes can't go on

@@ -1398,6 +1398,15 @@ extension AppState {
     /// Routes a notification to its originating profile/session without
     /// allowing the ordinary cold-start session restoration to win first.
     func openNotificationTargetOutcome(_ target: ConduitNotificationTarget) async -> NotificationOpenOutcome {
+        #if ELIO_PERSONAL
+        // Before any dashboard switch, decision migration or draft exposure.
+        // A cold launch without confirmed identity fails closed as well.
+        guard elioShowsConfirmedConversation,
+              elioOpenedConversation?.permitsExternalOpen(target, scope: elioConversationScope) == true else {
+            errorMessage = ElioConversationSelection.externalOpenUnavailable
+            return .failed
+        }
+        #endif
         let outcome = await openNotificationTargetOutcomeRouted(target)
         // A wait's notification whose id the open resolved to another (a
         // runtime id from an older notifier): its card is in the chat that

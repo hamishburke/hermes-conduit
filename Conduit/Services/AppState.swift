@@ -3322,6 +3322,9 @@ final class AppState: ObservableObject {
     // MARK: - Persistence (AppState+Persistence.swift, AppState+PinSync.swift, AppState+Notices.swift, AppState+Voice.swift)
 
     let defaults: UserDefaults
+    #if ELIO_PERSONAL
+    @Published var elioOpenedConversation: ElioOpenedConversation?
+    #endif
     /// Each profile's Voice preferences as last decoded, beside the stored
     /// bytes they came from (`loadVoiceProfilePreferences`).
     var decodedVoicePreferences: [String: (data: Data, preferences: VoiceProfilePreferences)] = [:]

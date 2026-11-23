@@ -1,0 +1,28 @@
+# Generate from the repository root with --project-root .
+name: Elio
+include:
+  - path: project.yml
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""
+targets:
+  Conduit:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hamishburke.elio
+        PRODUCT_NAME: Elio
+        PRODUCT_MODULE_NAME: Conduit
+        DEVELOPMENT_TEAM: ""
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ELIO_PERSONAL"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: Apple Development
+        PROVISIONING_PROFILE_SPECIFIER: ""
+        CODE_SIGN_ENTITLEMENTS: personal/Elio.entitlements
+        CONDUIT_URL_SCHEME: elio
+        CONDUIT_DEFAULT_RELAY_URL: ""
+    dependencies:REPLACE:
+      - package: WebRTC
+      - sdk: ImagePlayground.framework
+        weak: true
+      - sdk: ActivityKit.framework
+        weak: true

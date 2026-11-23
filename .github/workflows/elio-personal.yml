@@ -1,0 +1,48 @@
+name: Elio personal build
+# Trusted personal branch only. No event text is interpolated into shell code.
+
+on:
+  push:
+    branches: [personal/elio-one-thread]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: elio-personal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator-build:
+    if: github.repository == 'hamishburke/hermes-conduit'
+    runs-on: macos-26
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show available Xcode and select released SDK
+        run: |
+          sudo --preserve-env=GITHUB_ENV bash scripts/ci-select-xcode.sh
+          xcodebuild -version
+          xcodebuild -showsdks
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate isolated Elio project
+        run: xcodegen generate --spec personal/project.yml --project-root . --project .
+      - name: Compile personal app for simulator without signing
+        run: |
+          set -o pipefail
+          mkdir -p build/personal
+          xcodebuild build \
+            -project Elio.xcodeproj -scheme Conduit \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/personal/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/personal/build.log
+      - name: Upload compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: elio-simulator-build-${{ github.sha }}
+          path: build/personal/build.log
+          if-no-files-found: ignore
