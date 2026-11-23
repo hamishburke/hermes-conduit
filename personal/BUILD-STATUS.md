@@ -9,10 +9,10 @@ uncommitted thread rewrite.
 - Unsigned simulator build: **BUILD SUCCEEDED** on every iteration
   (`xcodebuild build -destination generic/platform=iOS Simulator`).
 - Installed and launched with `-ElioLook`, the DEBUG sample-thread argument.
-  Screenshots `~/elio-shots/21-ref-light.png` and `22-ref-dark.png` are the
-  current reference-matching build; `18-ax.png` is the same screen at
-  accessibility-extra-large, and `20-login.png` is the unpaired first-run
-  screen with no `-ElioLook`.
+  The current screenshots are `~/elio-shots/33-light.png` and `34-dark.png`;
+  `26-picker.png` shows the tapback picker opened by `-ElioLookPicker`,
+  `18-ax.png` the same screen at accessibility-extra-large, and `20-login.png`
+  the unpaired first-run screen with no `-ElioLook`.
 - Seen in the screenshots: white/black opaque bar with a centred "Elio" and one
   trailing compose button; grey incoming bubbles, blue outgoing bubbles with
   white text, uniform rounding and tighter runs from one speaker; a "Seen"
