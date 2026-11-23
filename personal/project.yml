@@ -30,3 +30,21 @@ targets:
     settings:
       base:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ELIO_PERSONAL"
+
+# Upstream defines no schemes (CI builds the implicit Conduit scheme), and an
+# implicit scheme carries no Test action, so `xcodebuild test -scheme Conduit`
+# refuses ConduitTests. This personal-only scheme exists so the pinned tests can
+# be run on a simulator or device without editing the shared project.yml.
+schemes:
+  ElioTests:
+    build:
+      targets:
+        Conduit: all
+        ConduitTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - ConduitTests
