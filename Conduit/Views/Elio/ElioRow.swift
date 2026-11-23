@@ -34,7 +34,7 @@ struct ElioRow: Identifiable, Equatable {
         if !streaming.isEmpty {
             var tail = ElioRow(id: "elio-streaming", kind: .agent, text: streaming)
             tail.isStreaming = true
-            tail.width = ElioTextMeasure.width(of: streaming, cap: cap)
+            tail.width = ElioTextMeasure.width(of: streaming, cap: cap, cacheable: false)
             rows.append(tail)
         }
         group(&rows)
