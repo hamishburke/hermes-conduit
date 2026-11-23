@@ -23,67 +23,22 @@ struct ElioConversationShell: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(uiColor: .systemBackground).ignoresSafeArea()
-                if appState.elioShowsConfirmedConversation {
-                    ChatView()
-                        .composerLayoutFromWidth()
-                        .readableChatColumn()
-                } else {
-                    unavailable
-                }
-            }
-            .windowSideContent()
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onOpenSettings) {
-                        HStack(spacing: 10) {
-                            headerAvatar.accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(verbatim: "Elio").scaledFont(.headline)
-                                Text(verbatim: connectionLabel)
-                                    .scaledFont(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal, 10)
-                        .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .conduitGlassControl(cornerRadius: 22)
-                    .accessibilityLabel(Text(verbatim: "Elio settings"))
-                    .accessibilityValue(Text(verbatim: connectionLabel))
-                    .accessibilityHint(Text(verbatim: "Opens connection and conversation settings"))
-                }
+        conversation
+    }
+
+    private var conversation: some View {
+        ZStack {
+            Color(uiColor: .systemBackground).ignoresSafeArea()
+            if appState.elioShowsConfirmedConversation {
+                ElioChatScreen(onOpenSettings: onOpenSettings)
+                    .readableChatColumn()
+            } else {
+                unavailable
             }
         }
+        .windowSideContent()
         .task(id: request) { await openConversation() }
         .onAppear { appState.dismissSidebarDrawer() }
-    }
-
-    private var connectionLabel: String {
-        if appState.isConnected { return "Connected" }
-        return appState.isRecoveringConnection ? "Reconnecting…" : "Offline"
-    }
-
-    @ViewBuilder
-    private var headerAvatar: some View {
-        if appState.elioShowsConfirmedConversation, let face = appState.conversationAgentIdentity.botFace {
-            BotAvatarView(name: face.name, label: appState.conversationAgentIdentity.name,
-                          colorString: face.colorString, image: face.image, size: 32,
-                          face: face.starterFace.map(StarterFaces.face))
-        } else if appState.elioShowsConfirmedConversation, let url = appState.conversationAgentIdentity.photoURL {
-            ProfileAvatarView(profile: appState.conversationAgentIdentity.profile,
-                              displayName: appState.conversationAgentIdentity.name, url: url)
-        } else {
-            Image(systemName: "person.crop.circle")
-                .scaledFont(.title2)
-                .frame(width: 32, height: 32)
-        }
     }
 
     private var unavailable: some View {
@@ -100,6 +55,12 @@ struct ElioConversationShell: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(opening)
+            Button(action: onOpenSettings) {
+                Text(verbatim: "Settings")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .frame(minHeight: 44)
         }
         .padding(24)
     }

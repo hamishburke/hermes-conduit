@@ -364,7 +364,17 @@ struct ConduitApp: App {
             if ProcessInfo.processInfo.arguments.contains(SelectionFixtureView.launchArgument) {
                 SelectionFixtureView()
             } else {
+                #if ELIO_PERSONAL
+                if ProcessInfo.processInfo.arguments.contains(ElioLookPreview.launchArgument) {
+                    ElioLookPreview()
+                        .environmentObject(appState)
+                        .tint(.conduitAccent)
+                } else {
+                    rootContent
+                }
+                #else
                 rootContent
+                #endif
             }
 #else
             rootContent

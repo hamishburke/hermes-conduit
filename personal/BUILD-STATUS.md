@@ -1,5 +1,27 @@
 # Build and device evidence
 
+## Purpose-built thread, 2026-11-23 23:15
+
+Xcode 27.0, iOS 27.0 SDK, XcodeGen 2.48.0, simulator `Elio-Sim` (iOS 27,
+iPhone 17 Pro class). Working tree of `personal/elio-one-thread` plus the
+uncommitted thread rewrite.
+
+- Unsigned simulator build: **BUILD SUCCEEDED** on every iteration
+  (`xcodebuild build -destination generic/platform=iOS Simulator`).
+- Installed and launched with `-ElioLook`, the DEBUG sample-thread argument.
+  Screenshots `~/elio-shots/16-thread-light.png`, `17-thread-dark.png` and
+  `18-ax.png` (accessibility-extra-large) are from that build; `20-login.png`
+  is the unpaired first-run screen, no `-ElioLook`.
+- Seen in the screenshots: white/black opaque bar with a centred "Elio" and one
+  trailing compose button; grey incoming bubbles, amber outgoing bubbles with
+  white text, grouped runs sharing a tail corner; a Markdown code block inside a
+  bubble; a clarify card with three grey choice rows; one growing composer with
+  no send button while empty.
+- Not done: install on the physical iPhone, pairing, a real send, streaming,
+  VoiceOver, Reduce Motion, iPad, and the top-of-thread grouping. The simulator
+  has no pairing, so `-ElioLook` feeds fixed rows; it proves layout, not the
+  data path.
+
 ## Mac compile and simulator run, 2026-11-23
 
 Head `13c43a0` (then the two overlay build commits) on `personal/elio-one-thread`,

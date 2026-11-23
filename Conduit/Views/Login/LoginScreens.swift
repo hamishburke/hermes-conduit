@@ -139,11 +139,19 @@ struct LoginAddressStep: View {
             }
             .loginFieldChrome(isFocused: focusedField == .server)
             .id(LoginField.server)
+            #if ELIO_PERSONAL
+            Text(verbatim: "No need to type https://. Elio works out how this dashboard signs in next.")
+                .scaledFont(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+            #else
             Text(AppLocalization.string("No need to type https://. Conduit checks how this dashboard signs in next.", table: .connection))
                 .scaledFont(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 4)
+            #endif
             HStack(spacing: 10) {
                 // The system paste control: it reads the clipboard only when
                 // tapped, so iOS asks nothing first.
@@ -841,11 +849,19 @@ struct LoginHeader: View {
             VStack(spacing: 4) {
                 switch style {
                 case .firstLaunch:
+                    #if ELIO_PERSONAL
+                    Text(verbatim: "Elio")
+                        .scaledFont(.system(.largeTitle, design: .rounded, weight: .bold))
+                    Text(verbatim: "Your line to Hermes.")
+                        .scaledFont(.subheadline)
+                        .foregroundStyle(.secondary)
+                    #else
                     Text("Conduit")
                         .scaledFont(.system(.largeTitle, design: .rounded, weight: .bold))
                     Text("A focused home for your Hermes work")
                         .scaledFont(.subheadline)
                         .foregroundStyle(.secondary)
+                    #endif
                 case .welcomeBack:
                     Text("Welcome back")
                         .scaledFont(.title2.weight(.semibold))
