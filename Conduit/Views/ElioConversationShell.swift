@@ -29,7 +29,7 @@ struct ElioConversationShell: View {
     private var conversation: some View {
         ZStack {
             Color(uiColor: .systemBackground).ignoresSafeArea()
-            if appState.elioShowsConfirmedConversation {
+            if appState.elioShowsConfirmedConversation || appState.elioShowsCachedConversation {
                 ElioChatScreen(onOpenSettings: onOpenSettings)
                     .readableChatColumn()
             } else {
@@ -67,6 +67,10 @@ struct ElioConversationShell: View {
 
     @MainActor
     private func openConversation() async {
+        // Already showing the live thread (the pinned chat, or the New Chat
+        // just made): a reconnect must not drag him out of it. A saved copy
+        // does not count: the opener still has to reach the real chat.
+        if appState.elioShowsConfirmedConversation { return }
         let expectedScope = appState.elioConversationScope
         let workspaceProfile = appState.activeProfile
         let pinned = expectedScope.flatMap { appState.defaults.string(forKey: $0.pinStorageKey) }

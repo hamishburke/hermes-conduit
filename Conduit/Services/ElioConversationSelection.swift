@@ -206,6 +206,13 @@ extension AppState {
     }
 
     var elioShowsConfirmedConversation: Bool {
+        // The chat the New Chat button just made is the pinned bot's own
+        // thread; the opener's proof still names the session it replaced.
+        if let created = shownChat.newChatOpenedSessionID, activeSessionId == created,
+           farChat == nil, activeRoomSurface == nil, !showsPendingNewChat,
+           elioConversationScope != nil {
+            return true
+        }
         guard let opened = elioOpenedConversation, farChat == nil,
               activeRoomSurface == nil, !showsPendingNewChat,
               savedCopyScrollSessionKey == nil else { return false }
@@ -213,6 +220,18 @@ extension AppState {
                                pinnedProfile: defaults.string(forKey: opened.scope.pinStorageKey)) else { return false }
         return opened.matches(scope: elioConversationScope,
                               profile: activeBotChatProfile, sessionID: activeSessionId)
+    }
+
+    /// The saved copy of this scope's conversation, shown while the live one
+    /// is still being reached: the thread is on screen from the first frame
+    /// instead of a loading state.
+    var elioShowsCachedConversation: Bool {
+        guard farChat == nil, activeRoomSurface == nil, !showsPendingNewChat,
+              let presented = offlineChatPresentation,
+              dashboardIDOnScreen != nil else { return false }
+        return presented.dashboardID == dashboardIDOnScreen
+            && presented.profile == activeProfile
+            && !presented.displayedMessages.isEmpty
     }
 }
 #endif

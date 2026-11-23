@@ -7,6 +7,7 @@ import SwiftUI
 /// reaches it.
 struct ElioChatScreen: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     let onOpenSettings: () -> Void
     /// Sample rows for the DEBUG look build. Nil on every real launch.
     var previewRows: [ElioRow]? = nil
@@ -26,9 +27,17 @@ struct ElioChatScreen: View {
     }
 
     private var rows: [ElioRow] {
-        previewRows ?? ElioRow.build(appState.messages,
+        previewRows ?? ElioRow.build(transcript,
                                      streaming: appState.streamingText,
                                      cap: bubbleCap)
+    }
+
+    /// The live transcript, or the saved copy of it while the connection is
+    /// still being reached. Never a mix: Hermes' rows take over whole.
+    private var transcript: [ChatMessage] {
+        let live = appState.messages
+        if !live.isEmpty { return live }
+        return appState.offlineChatPresentation?.displayedMessages ?? []
     }
 
     private var showsTyping: Bool {
@@ -77,23 +86,29 @@ struct ElioChatScreen: View {
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .defaultScrollAnchor(.bottom)
+                    .contentMargins(.bottom, 96, for: .scrollContent)
                     .onPreferenceChange(ElioWidthKey.self) { threadWidth = $0 }
                 )
-                .safeAreaInset(edge: .bottom, spacing: 0) { composerBar }
+                .overlay(alignment: .bottom) { composerBar }
+                .overlay(alignment: .top) { topFade }
                 .onAppear { scrollToBottom(proxy, animated: false) }
                 .onChange(of: rows.last?.id) { _, _ in scrollToBottom(proxy, animated: true) }
                 .onChange(of: appState.streamingText) { _, _ in scrollToBottom(proxy, animated: false) }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Button(action: onOpenSettings) {
-                        Text(verbatim: "Elio")
-                            .font(.headline)
+                        Image(avatarAsset)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 30, height: 30)
+                            .clipShape(Circle())
+                            .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: "Elio"))
                     .accessibilityHint(Text(verbatim: "Opens settings"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -101,6 +116,8 @@ struct ElioChatScreen: View {
                         appState.startNewChat()
                     } label: {
                         Image(systemName: "square.and.pencil")
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.35), radius: 4, y: 1)
                     }
                     .disabled(previewRows == nil && !appState.canTapNewChat)
                     .accessibilityLabel(Text(verbatim: "New chat"))
@@ -169,17 +186,6 @@ struct ElioChatScreen: View {
         .padding(.horizontal, 12)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background {
-            LinearGradient(
-                stops: [
-                    .init(color: Color(uiColor: .systemBackground).opacity(0), location: 0),
-                    .init(color: Color(uiColor: .systemBackground), location: 0.4)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(edges: .bottom)
-        }
     }
 
     /// Asked when a finger lands on a bubble, so drawing never scans the
@@ -189,6 +195,30 @@ struct ElioChatScreen: View {
               let message = appState.messages.first(where: { $0.id == row.id })
         else { return false }
         return appState.canReact(to: message)
+    }
+
+    private var avatarAsset: String {
+        colorScheme == .dark ? AppIconChoice.dark.previewAssetName
+            : AppIconChoice.light.previewAssetName
+    }
+
+    /// Messages slide up into a blur and a darkening gradient instead of
+    /// stopping at a hard bar. Soft at its lower edge, so nothing has a seam.
+    private var topFade: some View {
+        let page = Color(uiColor: .systemBackground)
+        return ZStack {
+            Rectangle().fill(.ultraThinMaterial)
+            LinearGradient(colors: [page.opacity(0.92), page.opacity(0)],
+                           startPoint: .top, endPoint: .bottom)
+        }
+        .frame(height: 150)
+        .mask(
+            LinearGradient(stops: [.init(color: .black, location: 0.5),
+                                   .init(color: .clear, location: 1)],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
     }
 
     private var status: String? {

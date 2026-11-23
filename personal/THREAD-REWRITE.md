@@ -81,3 +81,32 @@ Layout and colour on a simulator are evidence; feel is not. Unmeasured: a
 200-message transcript, streaming at 30 tokens a second, a clarify arriving
 mid-stream, VoiceOver, Dynamic Type at accessibility sizes, iPad, and the real
 send path on a paired phone.
+
+## Header, composer, and being there before the connection
+
+- The bar is gone. The thread runs under the status bar and fades into a
+  material-plus-gradient mask 150 points tall, so messages slide away instead
+  of stopping at a hard edge. The bar itself draws nothing.
+- The centre of the bar is the persona's own app-icon artwork in a 30-point
+  circle rather than the word "Elio"; tapping it still opens settings. The
+  compose button is white with a soft shadow so it reads on both page colours.
+- The composer is a floating Liquid Glass field at the bottom over the thread
+  (overlay plus a 96-point bottom content margin, not a safe-area bar). The
+  microphone sits in the trailing slot exactly where the send arrow appears, so
+  the field never has a dead corner: empty shows the mic, typing shows send.
+  Dictation goes through the app's own `ComposerDictationService`, writes into
+  the draft, and never sends.
+- The thread draws the saved copy of the conversation while the live one is
+  being reached (`ElioChatScreen.transcript` falls back to
+  `offlineChatPresentation.displayedMessages`), and the shell shows that screen
+  under `elioShowsCachedConversation`. Hermes' rows replace the saved ones whole
+  once the opener lands; the opener still runs, so the saved copy is display
+  only and never blocks reaching the real chat.
+- New Chat no longer falls through to "Conversation unavailable": the
+  confirmation gate accepts the session `startNewChat()` just created, and the
+  shell's opener returns early while a live conversation is up, so a reconnect
+  cannot drag him back out of a new thread.
+
+Unverified after this pass: dictation on a device (no microphone input here),
+the New Chat path and the cached path (both need a paired, signed-in install),
+and the floating composer with the keyboard up.

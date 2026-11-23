@@ -15,7 +15,8 @@ enum ElioTextMeasure {
 
     static func width(of source: String, cap: CGFloat) -> CGFloat {
         guard cap > 60 else { return cap }
-        let font = UIFont.preferredFont(forTextStyle: .body)
+        let size = ChatTypography.stored()
+        let font = ChatTypography.font(for: .body, chatSize: size)
         let key = "\(Int(cap))|\(Int(font.pointSize))|\(source)"
         if let hit = cache[key] { return hit }
         let value = measure(source, cap: cap, font: font)
