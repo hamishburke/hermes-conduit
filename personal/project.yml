@@ -30,6 +30,11 @@ targets:
     settings:
       base:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ELIO_PERSONAL"
+        # XcodeGen derives TEST_HOST from the target name, and this overlay
+        # renames the product to Elio, so the generated host path pointed at a
+        # Conduit.app that no longer exists.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Elio.app/Elio"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 
 # Upstream defines no schemes (CI builds the implicit Conduit scheme), and an
 # implicit scheme carries no Test action, so `xcodebuild test -scheme Conduit`
